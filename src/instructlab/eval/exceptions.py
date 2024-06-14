@@ -10,6 +10,9 @@ class EvalError(Exception):
 class ModelNotFoundError(EvalError):
     """
     Exception raised when model is not able to be found
+
+    Attributes
+        model   model that is being operated on
     """
 
     def __init__(self, model) -> None:
