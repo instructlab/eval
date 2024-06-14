@@ -16,6 +16,12 @@ class MT_Bench_Evaluator(Evaluator):
         super().__init__(model)
         self.server_url = server_url
 
+    def run(self) -> dict:
+        overall_score: float = 0.0
+        qa_pairs: list[tuple] = []
+        payload = {"overall_score": overall_score, "qa_pairs": qa_pairs}
+        return payload
+
 
 class PR_Bench_Evaluator(Evaluator):
     """
@@ -30,3 +36,9 @@ class PR_Bench_Evaluator(Evaluator):
         super().__init__(model)
         self.server_url = server_url
         self.questions = questions
+
+    def run(self) -> dict:
+        overall_score = 0.0
+        qa_pairs: list[tuple] = []
+        payload = {"overall_score": overall_score, "qa_pairs": qa_pairs}
+        return payload

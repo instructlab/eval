@@ -11,6 +11,3 @@ class Evaluator:
 
     def __init__(self, model: str) -> None:
         self.model = model
-
-    def run(self) -> dict:
-        return {}

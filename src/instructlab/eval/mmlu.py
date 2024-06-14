@@ -22,6 +22,15 @@ class MMLU_Evaluator(Evaluator):
         self.fewshots = fewshots
         self.batchsize = batchsize
 
+    def run(self) -> dict:
+        individual_scores: dict[str, float] = {}
+        overall_score: float = 0.0
+        payload = {
+            "individual_scores": individual_scores,
+            "overall_score": overall_score,
+        }
+        return payload
+
 
 class PR_MMLU_Evaluator(Evaluator):
     """
@@ -47,3 +56,14 @@ class PR_MMLU_Evaluator(Evaluator):
         self.task = task
         self.fewshots = fewshots
         self.batchsize = batchsize
+
+    def run(self) -> dict:
+        individual_scores: dict[str, float] = {}
+        overall_score: float = 0.0
+        qa_pairs: list[tuple] = []
+        payload = {
+            "individual_scores": individual_scores,
+            "overall_score": overall_score,
+            "qa_pairs": qa_pairs,
+        }
+        return payload
