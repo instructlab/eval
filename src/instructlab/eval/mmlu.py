@@ -15,9 +15,9 @@ class MMLU_Evaluator(Evaluator):
     """
 
     def __init__(
-        self, model, tasks: list[str], fewshots: int = 2, batchsize: int = 5
+        self, model_path, tasks: list[str], fewshots: int = 2, batchsize: int = 5
     ) -> None:
-        super().__init__(model)
+        super().__init__(model_path)
         self.tasks = tasks
         self.fewshots = fewshots
         self.batchsize = batchsize
@@ -45,13 +45,13 @@ class PR_MMLU_Evaluator(Evaluator):
 
     def __init__(
         self,
-        model,
+        model_path,
         sdg_path: str,
         task: str = "mmlu_pr",
         fewshots: int = 2,
         batchsize: int = 5,
     ) -> None:
-        super().__init__(model)
+        super().__init__(model_path)
         self.sdg_path = sdg_path
         self.task = task
         self.fewshots = fewshots

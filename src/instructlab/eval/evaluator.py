@@ -6,8 +6,8 @@ class Evaluator:
     Parent class for Evaluators
 
     Atttributes:
-        model   The model to be evaluated
+        model_path   Path to the model to be evaluated
     """
 
-    def __init__(self, model: str) -> None:
-        self.model = model
+    def __init__(self, model_path: str) -> None:
+        self.model_path = model_path

@@ -12,8 +12,8 @@ class MT_Bench_Evaluator(Evaluator):
         server_url  vLLM server endpoint
     """
 
-    def __init__(self, model, server_url: str) -> None:
-        super().__init__(model)
+    def __init__(self, model_path, server_url: str) -> None:
+        super().__init__(model_path)
         self.server_url = server_url
 
     def run(self) -> dict:
@@ -32,8 +32,8 @@ class PR_Bench_Evaluator(Evaluator):
         questions   questions to be asked
     """
 
-    def __init__(self, model, server_url: str, questions: str) -> None:
-        super().__init__(model)
+    def __init__(self, model_path, server_url: str, questions: str) -> None:
+        super().__init__(model_path)
         self.server_url = server_url
         self.questions = questions
 
