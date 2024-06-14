@@ -10,17 +10,17 @@ class MMLU_Evaluator(Evaluator):
 
     Attributes:
         tasks       list of tasks for MMLU to test the model with
-        fewshots    number of examples
-        batchsize   number of GPUs
+        few_shots    number of examples
+        batch_size   number of GPUs
     """
 
     def __init__(
-        self, model_path, tasks: list[str], fewshots: int = 2, batchsize: int = 5
+        self, model_path, tasks: list[str], few_shots: int = 2, batch_size: int = 5
     ) -> None:
         super().__init__(model_path)
         self.tasks = tasks
-        self.fewshots = fewshots
-        self.batchsize = batchsize
+        self.few_shots = few_shots
+        self.batch_size = batch_size
 
     def run(self) -> dict:
         individual_scores: dict[str, float] = {}
@@ -39,8 +39,8 @@ class PR_MMLU_Evaluator(Evaluator):
     Attributes:
         sdg_path    path where all the PR MMLU tasks are stored
         task        group name that is shared by all the PR MMLU tasks
-        fewshots    number of examples
-        batchsize   number of GPUs
+        few_shots    number of examples
+        batch_size   number of GPUs
     """
 
     def __init__(
@@ -48,14 +48,14 @@ class PR_MMLU_Evaluator(Evaluator):
         model_path,
         sdg_path: str,
         task: str = "mmlu_pr",
-        fewshots: int = 2,
-        batchsize: int = 5,
+        few_shots: int = 2,
+        batch_size: int = 5,
     ) -> None:
         super().__init__(model_path)
         self.sdg_path = sdg_path
         self.task = task
-        self.fewshots = fewshots
-        self.batchsize = batchsize
+        self.few_shots = few_shots
+        self.batch_size = batch_size
 
     def run(self) -> dict:
         individual_scores: dict[str, float] = {}
