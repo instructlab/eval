@@ -2,6 +2,8 @@
 
 # Local
 from .evaluator import Evaluator
+#from .gen_api_answer import reorg_answer_file
+import instructlab.eval.gen_api_answer as gen_api_answer
 
 
 class MT_Bench_Evaluator(Evaluator):
@@ -12,13 +14,17 @@ class MT_Bench_Evaluator(Evaluator):
         server_url  vLLM server endpoint
     """
 
-    def __init__(self, model_path, server_url: str) -> None:
-        super().__init__(model_path)
+    def __init__(self, server_url: str) -> None:
         self.server_url = server_url
 
-    def run(self) -> tuple:
+    def gen_answers(self, server_url) -> str:
+        """ Asks questions to model, returns path to answers"""
+        path = server_url
+        return path
+
+    def judge_answers(self) -> tuple:
         """
-        Runs MT-Bench evaluation
+        Runs MT-Bench judgement
 
         Returns:
             overall_score   MT-Bench score for the overall model evaluation
