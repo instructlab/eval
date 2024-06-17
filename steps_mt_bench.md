@@ -61,5 +61,15 @@ OPENAI_API_KEY="NO_API_KEY" python gen_api_answer.py \
 --question-end 4
 ```
 
+If not dry run
+```shell
+OPENAI_API_KEY="NO_API_KEY" python gen_api_answer.py \
+--bench-name mt_bench \
+--openai-api-base http://localhost:8000/v1 \
+--model granite-7b-lab \
+--num-choices 1
+```
+
+
 ### From justfile: `run_judge`
 

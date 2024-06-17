@@ -39,13 +39,13 @@ def reorg_answer_file(answer_file):
 
 
 def get_answer(
-    question: dict, model: str, num_choices: int, max_tokens: int, answer_file: str
+        question: dict, model: str, num_choices: int, max_tokens: int, answer_file: str, force_temperature: float
 ):
     assert (
-        args.force_temperature is not None and "required_temperature" in question.keys()
+        force_temperature is not None and "required_temperature" in question.keys()
     ) == False
-    if args.force_temperature is not None:
-        temperature = args.force_temperature
+    if force_temperature is not None:
+        temperature = force_temperature
     elif "required_temperature" in question.keys():
         temperature = question["required_temperature"]
     elif question["category"] in temperature_config:
@@ -90,68 +90,39 @@ def get_answer(
     with open(answer_file, "a") as fout:
         fout.write(json.dumps(ans) + "\n")
 
+def run(
+        question_begin=None,
+        question_end=None,
+        force_temperature=None,
+        answer_file=None,
+        model_name="gpt-3.5-turbo",
+        num_choices=1,
+        max_tokens=1024,
+        parallel=1,
+        openai_api_base=None):
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--bench-name",
-        type=str,
-        default="mt_bench",
-        help="The name of the benchmark question set.",
-    )
-    parser.add_argument("--answer-file", type=str, help="The output answer file.")
-    parser.add_argument("--model", type=str, default="gpt-3.5-turbo")
-    parser.add_argument(
-        "--num-choices",
-        type=int,
-        default=1,
-        help="How many completion choices to generate.",
-    )
-    parser.add_argument(
-        "--force-temperature", type=float, help="Forcibly set a sampling temperature."
-    )
-    parser.add_argument(
-        "--max-tokens",
-        type=int,
-        default=1024,
-        help="The maximum number of new generated tokens.",
-    )
-    parser.add_argument(
-        "--question-begin",
-        type=int,
-        help="A debug option. The begin index of questions.",
-    )
-    parser.add_argument(
-        "--question-end", type=int, help="A debug option. The end index of questions."
-    )
-    parser.add_argument(
-        "--parallel", type=int, default=1, help="The number of concurrent API calls."
-    )
-    parser.add_argument("--openai-api-base", type=str, default=None)
-    args = parser.parse_args()
+    os.environ(
+    if openai_api_base is not None:
+        openai.api_base = openai_api_base
 
-    if args.openai_api_base is not None:
-        openai.api_base = args.openai_api_base
+    question_file = f"data/mt_bench/question.jsonl"
+    questions = load_questions(question_file, question_begin, question_end)
 
-    question_file = f"data/{args.bench_name}/question.jsonl"
-    questions = load_questions(question_file, args.question_begin, args.question_end)
-
-    if args.answer_file:
-        answer_file = args.answer_file
-    else:
-        answer_file = f"data/{args.bench_name}/model_answer/{args.model}.jsonl"
+    if not answer_file:
+        answer_file = f"data/mt_bench/model_answer/{model_name}.jsonl"
     print(f"Output to {answer_file}")
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=args.parallel) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=parallel) as executor:
         futures = []
         for question in questions:
             future = executor.submit(
                 get_answer,
                 question,
-                args.model,
-                args.num_choices,
-                args.max_tokens,
+                model_name,
+                num_choices,
+                max_tokens,
                 answer_file,
+                force_temperature,
             )
             futures.append(future)
 

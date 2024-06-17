@@ -17,10 +17,10 @@ class MT_Bench_Evaluator(Evaluator):
     def __init__(self, server_url: str) -> None:
         self.server_url = server_url
 
-    def gen_answers(self, server_url) -> str:
+    def gen_answers(self, answer_file, server_url) -> str:
         """ Asks questions to model, returns path to answers"""
-        path = server_url
-        return path
+        gen_api_answer.run(answer_file=answer_file, model_name="instructlab/granite-7b-lab", openai_api_base=server_url)
+        return answer_file
 
     def judge_answers(self) -> tuple:
         """
