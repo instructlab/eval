@@ -22,14 +22,10 @@ class MMLU_Evaluator(Evaluator):
         self.few_shots = few_shots
         self.batch_size = batch_size
 
-    def run(self) -> dict:
+    def run(self) -> tuple:
         individual_scores: dict[str, float] = {}
         overall_score: float = 0.0
-        payload = {
-            "individual_scores": individual_scores,
-            "overall_score": overall_score,
-        }
-        return payload
+        return overall_score, individual_scores
 
 
 class PR_MMLU_Evaluator(Evaluator):
@@ -39,8 +35,8 @@ class PR_MMLU_Evaluator(Evaluator):
     Attributes:
         sdg_path    path where all the PR MMLU tasks are stored
         task        group name that is shared by all the PR MMLU tasks
-        few_shots    number of examples
-        batch_size   number of GPUs
+        few_shots   number of examples
+        batch_size  number of GPUs
     """
 
     def __init__(
@@ -57,13 +53,8 @@ class PR_MMLU_Evaluator(Evaluator):
         self.few_shots = few_shots
         self.batch_size = batch_size
 
-    def run(self) -> dict:
+    def run(self) -> tuple:
         individual_scores: dict[str, float] = {}
         overall_score: float = 0.0
         qa_pairs: list[tuple] = []
-        payload = {
-            "individual_scores": individual_scores,
-            "overall_score": overall_score,
-            "qa_pairs": qa_pairs,
-        }
-        return payload
+        return overall_score, individual_scores, qa_pairs
