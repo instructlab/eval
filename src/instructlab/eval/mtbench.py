@@ -1,9 +1,10 @@
 # SPDX-License-Identifier: Apache-2.0
+import os
 
 # Local
 from .evaluator import Evaluator
-#from .gen_api_answer import reorg_answer_file
 import instructlab.eval.gen_api_answer as gen_api_answer
+import instructlab.eval.gen_judgement as gen_judgement
 
 
 class MT_Bench_Evaluator(Evaluator):
@@ -19,10 +20,12 @@ class MT_Bench_Evaluator(Evaluator):
 
     def gen_answers(self, answer_file, server_url) -> str:
         """ Asks questions to model, returns path to answers"""
+        os.environ['OPENAI_API_KEY'] = "NO_API_KEY"
         gen_api_answer.run(answer_file=answer_file, model_name="instructlab/granite-7b-lab", openai_api_base=server_url)
         return answer_file
 
-    def judge_answers(self) -> tuple:
+    #def judge_answers(self, judge_endpoint) -> tuple:
+    def judge_answers(self, judge_endpoint) -> str:
         """
         Runs MT-Bench judgement
 
@@ -30,9 +33,10 @@ class MT_Bench_Evaluator(Evaluator):
             overall_score   MT-Bench score for the overall model evaluation
             qa_pairs        Question and answer pairs from the evaluation
         """
-        overall_score: float = 0.0
-        qa_pairs: list[tuple] = []
-        return overall_score, qa_pairs
+        os.environ['OPENAI_API_BASE'] = judge_endpoint
+        os.environ['OPENAI_API_KEY'] = "NO_API_KEY"
+        output_file = gen_judgement.run(parallel=40)
+        return output_file
 
 
 class PR_Bench_Evaluator(Evaluator):

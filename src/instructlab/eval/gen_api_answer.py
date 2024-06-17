@@ -101,7 +101,6 @@ def run(
         parallel=1,
         openai_api_base=None):
 
-    os.environ(
     if openai_api_base is not None:
         openai.api_base = openai_api_base
 
