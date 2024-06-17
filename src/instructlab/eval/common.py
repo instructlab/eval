@@ -778,6 +778,7 @@ def check_data(questions, model_answers, ref_answers, models, judges):
         for q in questions:
             if q["category"] not in NEED_REF_CATS:
                 continue
+            print(f"ALI: ref_answers is: {ref_answers}")
             assert (
                 q["question_id"] in ref_answers[jg.model_name]
             ), f"Missing reference answer to Question {q['question_id']} for judge {jg.model_name}"
