@@ -17,6 +17,13 @@ class MT_Bench_Evaluator(Evaluator):
         self.server_url = server_url
 
     def run(self) -> tuple:
+        """
+        Runs MT-Bench evaluation
+
+        Returns:
+            overall_score   MT-Bench score for the overall model evaluation
+            qa_pairs        Question and answer pairs from the evaluation
+        """
         overall_score: float = 0.0
         qa_pairs: list[tuple] = []
         return overall_score, qa_pairs
@@ -37,6 +44,13 @@ class PR_Bench_Evaluator(Evaluator):
         self.questions = questions
 
     def run(self) -> tuple:
+        """
+        Runs PR-Bench evaluation
+
+        Returns:
+            overall_score   MT-Bench score for the overall model evaluation
+            qa_pairs        Question and answer pairs from the evaluation
+        """
         overall_score = 0.0
         qa_pairs: list[tuple] = []
         return overall_score, qa_pairs

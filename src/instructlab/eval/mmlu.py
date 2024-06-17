@@ -9,7 +9,7 @@ class MMLU_Evaluator(Evaluator):
     Child class of an Evaluator for Massive Multitask Language Understanding (MMLU)
 
     Attributes:
-        tasks       list of tasks for MMLU to test the model with
+        tasks        list of tasks for MMLU to test the model with
         few_shots    number of examples
         batch_size   number of GPUs
     """
@@ -23,6 +23,13 @@ class MMLU_Evaluator(Evaluator):
         self.batch_size = batch_size
 
     def run(self) -> tuple:
+        """
+        Runs MMLU evaluation
+
+        Returns:
+            overall_score       MMLU score for the overall model evaluation
+            individual_scores   Individual MMLU score for each task
+        """
         individual_scores: dict[str, float] = {}
         overall_score: float = 0.0
         return overall_score, individual_scores
@@ -54,6 +61,14 @@ class PR_MMLU_Evaluator(Evaluator):
         self.batch_size = batch_size
 
     def run(self) -> tuple:
+        """
+        Runs PR MMLU evaluation
+
+        Returns:
+            overall_score       PR MMLU score for the overall model evaluation
+            individual_scores   Individual PR MMLU scores for each task
+            qa_pairs            Question and answer pairs from the evaluation
+        """
         individual_scores: dict[str, float] = {}
         overall_score: float = 0.0
         qa_pairs: list[tuple] = []
