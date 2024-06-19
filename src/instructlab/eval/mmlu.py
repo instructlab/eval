@@ -3,6 +3,8 @@
 # Local
 from .evaluator import Evaluator
 
+# Third Party 
+from lm_eval.evaluator import simple_evaluate
 
 class MMLU_Evaluator(Evaluator):
     """
@@ -15,9 +17,11 @@ class MMLU_Evaluator(Evaluator):
     """
 
     def __init__(
-        self, model_path, tasks: list[str], few_shots: int = 2, batch_size: int = 5
+        self, model, model_args, model_path, tasks: list[str], few_shots: int = 2, batch_size: int = 5
     ) -> None:
-        self.model_path = model_path
+        super().__init__(model_path)
+        self.model = model
+        self.model_args = model_args
         self.tasks = tasks
         self.few_shots = few_shots
         self.batch_size = batch_size
@@ -32,8 +36,37 @@ class MMLU_Evaluator(Evaluator):
         """
         individual_scores: dict[str, float] = {}
         overall_score: float = 0.0
+        results = lm_eval.simple_evaluate(
+            model=self.model,
+            model_args=self.model_args,
+            tasks=self.tasks,
+            num_fewshot=self.few_shots,
+            batch_size=self.batch_size,
+            log_samples=True,
+        )
+        #TODO: see what the output of results looks like 
+        #print(results)
+        #calculate_overall_score(results)
         return overall_score, individual_scores
+    
+    def calculate_overall_score(scores):
+        pass # Placeholder for calculating overall score:
+             # overall score = (num model answered correctly / num questions)
 
+############# Testing Code Follows ##############
+def main():
+    # TODO: change this- cli uses HuggingFace to access the model 
+    model = "hf"
+    model_args = "pretrained=$MODEL_PATH,dtype=bfloat16"
+    # Path to the granite model in the aliryan vm on AWS
+    model_path = "/home/ec2-user/instructlab/models/instructlab/granite-7b-lab"
+    #TODO: all 57 tasks need to be parameterized possibly by CLI
+    tasks = "mmlu_abstract_algebra"
+    mmlu = MMLU_Evaluator(model, model_args, model_path, tasks, 2, 5)
+
+if __name__ == "__main__":
+    main()
+############# Testing Code Ends ##############
 
 class PR_MMLU_Evaluator(Evaluator):
     """
