@@ -27,6 +27,7 @@ class MMLUEvaluator(Evaluator):
         self.model_dtype = model_dtype
         self.few_shots = few_shots
         self.batch_size = batch_size
+        self.model_path = model_path
 
     def run(self) -> tuple:
         """
@@ -68,6 +69,7 @@ class MMLUBranchEvaluator(Evaluator):
     Child class of an Evaluator for Massive Multitask Language Understanding Branch (MMLUBranch)
 
     Attributes:
+        model_path  absolute path to or name of a huggingface model
         sdg_path    path where all the MMLUBranch tasks are stored
         task        group name that is shared by all the MMLUBranch tasks
         few_shots   number of examples
@@ -82,6 +84,7 @@ class MMLUBranchEvaluator(Evaluator):
         few_shots: int = 2,
         batch_size: int = 5,
     ) -> None:
+        super().__init__()
         self.model_path = model_path
         self.sdg_path = sdg_path
         self.task = task
