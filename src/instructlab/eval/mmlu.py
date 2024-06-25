@@ -4,7 +4,7 @@
 import os
 
 # Third Party
-from lm_eval.evaluator import simple_evaluate
+from lm_eval.evaluator import simple_evaluate  # type: ignore
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
