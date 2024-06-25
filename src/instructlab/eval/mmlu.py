@@ -1,11 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 
-# Local
+# Standard
+import os
+
+# Third Party
+from lm_eval.evaluator import simple_evaluate
+
+# First Party
 from instructlab.eval.evaluator import Evaluator
 
-# Third Party 
-from lm_eval.evaluator import simple_evaluate
-import os
 
 class MMLUEvaluator(Evaluator):
     """
@@ -20,14 +23,19 @@ class MMLUEvaluator(Evaluator):
     """
 
     def __init__(
-        self, model_path, tasks: list[str], model_dtype = 'bfloat16', few_shots: int = 2, batch_size: int = 5
+        self,
+        model_path,
+        tasks: list[str],
+        model_dtype="bfloat16",
+        few_shots: int = 2,
+        batch_size: int = 5,
     ) -> None:
-        super().__init__(model_path)
+        super().__init__()
+        self.model_path = model_path
         self.tasks = tasks
         self.model_dtype = model_dtype
         self.few_shots = few_shots
         self.batch_size = batch_size
-        self.model_path = model_path
 
     def run(self) -> tuple:
         """
@@ -37,8 +45,8 @@ class MMLUEvaluator(Evaluator):
             overall_score       MMLU score for the overall model evaluation
             individual_scores   Individual MMLU score for each task
         """
-        #TODO: make this a parameter for class?
-        os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+        # TODO: make this a parameter for class?
+        os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
         individual_scores: dict = {}
         agg_score: float = 0.0
@@ -49,20 +57,21 @@ class MMLUEvaluator(Evaluator):
             model_args=model_args,
             tasks=self.tasks,
             num_fewshot=self.few_shots,
-            batch_size=self.batch_size
+            batch_size=self.batch_size,
         )
 
         results = mmlu_output["results"]
 
         for task in self.tasks:
             mmlu_res = results[task]
-            agg_score += float(mmlu_res['acc,none'])
+            agg_score += float(mmlu_res["acc,none"])
             individual_scores[task] = {}
-            individual_scores[task]['score'] = float(mmlu_res['acc,none'])
-            individual_scores[task]['stderr'] = float(mmlu_res['acc_stderr,none'])
+            individual_scores[task]["score"] = float(mmlu_res["acc,none"])
+            individual_scores[task]["stderr"] = float(mmlu_res["acc_stderr,none"])
 
-        overall_score = float(agg_score/len(self.tasks))
+        overall_score = float(agg_score / len(self.tasks))
         return overall_score, individual_scores
+
 
 class MMLUBranchEvaluator(Evaluator):
     """
@@ -84,7 +93,6 @@ class MMLUBranchEvaluator(Evaluator):
         few_shots: int = 2,
         batch_size: int = 5,
     ) -> None:
-        super().__init__()
         self.model_path = model_path
         self.sdg_path = sdg_path
         self.task = task
