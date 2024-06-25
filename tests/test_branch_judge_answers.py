@@ -14,7 +14,7 @@ qa_pairs = mt_bench_branch.judge_answers("http://localhost:8000/v1")
 print(f"QA Pair 0:")
 pprint.pprint(qa_pairs[0])
 
-print(f"base_qa_pairs length: {len(qa_pairs)}")
+print(f"qa_pairs length: {len(qa_pairs)}")
 
 for qa_pair in qa_pairs:
     question_id = qa_pair.get("question_id")

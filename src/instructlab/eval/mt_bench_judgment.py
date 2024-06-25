@@ -90,12 +90,15 @@ def make_judgment(
     if bench_name == "mt_bench":
         # Second turn
         df_2 = judgment_df[judgment_df["turn"] == 2].groupby(["model", "turn"]).mean()
-        turn2_score = df_2["score"].iloc[0]
-        turn_scores.append(turn2_score)
+        if len(df_2.index) > 0:
+            turn2_score = df_2["score"].iloc[0]
+            turn_scores.append(turn2_score)
 
-        # Average
-        df_3 = judgment_df[["model", "score"]].groupby(["model"]).mean()
-        overall_score = df_3["score"].iloc[0]
+            # Average
+            df_3 = judgment_df[["model", "score"]].groupby(["model"]).mean()
+            overall_score = df_3["score"].iloc[0]
+        else:
+            turn_scores.append("N/A")
 
     question_df = pd.read_json(question_file, lines=True)
 
@@ -128,6 +131,7 @@ def make_judgment(
 def judge_model(
     model_name,
     judge_model_name,
+    openai_client,
     branch=None,
     bench_name="mt_bench",
     output_dir="eval_output",
@@ -218,11 +222,11 @@ def judge_model(
     # Play matches
     if max_workers == 1:
         for match in tqdm(matches):
-            play_a_match_single(match, output_file=output_file)
+            play_a_match_single(openai_client, match, output_file=output_file)
     else:
 
         def play_a_match_wrapper(match):
-            play_a_match_single(match, output_file=output_file)
+            play_a_match_single(openai_client, match, output_file=output_file)
 
         np.random.seed(0)
         np.random.shuffle(matches)
@@ -239,6 +243,7 @@ def judge_model(
 def generate_judgment(
     model_name,
     judge_model_name,
+    model_api_base,
     bench_name="mt_bench",
     output_dir="eval_output",
     data_dir=None,
@@ -246,19 +251,18 @@ def generate_judgment(
     model_list=None,
     max_workers=1,
     first_n=None,
-    model_api_base=None,
 ):
     """Generate judgment with scores and qa_pairs for a model"""
-    if model_api_base is not None:
-        openai.api_base = model_api_base
+    openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
 
-    first_n_env = os.environ.get("INSTRUCT_LAB_EVAL_FIRST_N_QUESTIONS")
+    first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
     if first_n_env is not None and first_n is None:
         first_n = int(first_n_env)
 
     question_file, judgment_file, answer_file = judge_model(
         model_name,
         judge_model_name,
+        openai_client,
         bench_name=bench_name,
         output_dir=output_dir,
         data_dir=data_dir,

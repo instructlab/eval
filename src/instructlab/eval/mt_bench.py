@@ -43,7 +43,7 @@ class MTBenchEvaluator(Evaluator):
         """
         mt_bench_answers.generate_answers(
             self.model_name,
-            model_api_base=server_url,
+            server_url,
             output_dir=self.output_dir,
             max_workers=self.max_workers,
         )
@@ -63,8 +63,8 @@ class MTBenchEvaluator(Evaluator):
         return mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
+            server_url,
             max_workers=self.max_workers,
-            model_api_base=server_url,
             output_dir=self.output_dir,
         )
 
@@ -113,8 +113,8 @@ class MTBenchBranchEvaluator(Evaluator):
         )
         mt_bench_answers.generate_answers(
             self.model_name,
+            server_url,
             branch=self.branch,
-            model_api_base=server_url,
             output_dir=self.output_dir,
             data_dir=self.output_dir,
             max_workers=self.max_workers,
@@ -134,9 +134,9 @@ class MTBenchBranchEvaluator(Evaluator):
         _, qa_pairs, _ = mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
+            server_url,
             branch=self.branch,
             max_workers=self.max_workers,
-            model_api_base=server_url,
             output_dir=self.output_dir,
             data_dir=self.output_dir,
             bench_name="mt_bench_branch",

@@ -50,8 +50,7 @@ class MMLUEvaluator(Evaluator):
 
         individual_scores: dict = {}
         agg_score: float = 0.0
-        model_args = f"pretrained= {self.model_path}, dtype= {self.model_dtype}"
-
+        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
         mmlu_output = simple_evaluate(
             model="hf",
             model_args=model_args,
