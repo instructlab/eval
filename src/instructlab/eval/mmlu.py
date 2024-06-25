@@ -7,7 +7,7 @@ from instructlab.eval.evaluator import Evaluator
 from lm_eval.evaluator import simple_evaluate
 import os
 
-class MMLU_Evaluator(Evaluator):
+class MMLUEvaluator(Evaluator):
     """
     Child class of an Evaluator for Massive Multitask Language Understanding (MMLU)
 
@@ -62,31 +62,14 @@ class MMLU_Evaluator(Evaluator):
 
         overall_score = float(agg_score/len(self.tasks))
         return overall_score, individual_scores
-    
 
-############# Testing Code Follows ##############
-def main():
-    # Path to the granite model in the aliryan vm on AWS
-    model_path = "/home/ec2-user/instructlab/models/instructlab/granite-7b-lab"
-    #TODO: all 57 tasks need to be parameterized possibly by CLI
-    tasks = ["mmlu_abstract_algebra","mmlu_anatomy","mmlu_astronomy"]
-    dtype = "float16"
-    mmlu = MMLU_Evaluator(model_path, tasks, dtype, 2, 5)
-    overall_score, individual_scores = mmlu.run()
-    print(overall_score)
-    print(individual_scores)
-
-if __name__ == "__main__":
-    main()
-############# Testing Code Ends ##############
-
-class PR_MMLU_Evaluator(Evaluator):
+class MMLUBranchEvaluator(Evaluator):
     """
-    Child class of an Evaluator for PR Massive Multitask Language Understanding (PR MMLU)
+    Child class of an Evaluator for Massive Multitask Language Understanding Branch (MMLUBranch)
 
     Attributes:
-        sdg_path    path where all the PR MMLU tasks are stored
-        task        group name that is shared by all the PR MMLU tasks
+        sdg_path    path where all the MMLUBranch tasks are stored
+        task        group name that is shared by all the MMLUBranch tasks
         few_shots   number of examples
         batch_size  number of GPUs
     """
@@ -107,11 +90,11 @@ class PR_MMLU_Evaluator(Evaluator):
 
     def run(self) -> tuple:
         """
-        Runs PR MMLU evaluation
+        Runs MMLUBranch evaluation
 
         Returns:
-            overall_score       PR MMLU score for the overall model evaluation
-            individual_scores   Individual PR MMLU scores for each task
+            overall_score       MMLUBranch score for the overall model evaluation
+            individual_scores   Individual MMLUBranch scores for each task
             qa_pairs            Question and answer pairs from the evaluation
         """
         individual_scores: dict[str, float] = {}
