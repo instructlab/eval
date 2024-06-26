@@ -30,6 +30,9 @@ pip install vllm
 python -m vllm.entrypoints.openai.api_server --model instructlab/granite-7b-lab --tensor-parallel-size 1
 ```
 
+> Note: You may need to be specific about which Python version you use for your virtual environment.
+> e.g. `python3.11 -m venv venv` is supported.
+
 In another shell window
 
 ```shell
