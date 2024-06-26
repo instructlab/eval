@@ -114,7 +114,7 @@ class MMLUBranchEvaluator(Evaluator):
 
         individual_scores: dict = {}
         agg_score: float = 0.0
-        model_args = "pretrained=" + self.model_path + ",dtype=" + self.model_dtype
+        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
 
         tm = TaskManager(verbosity="DEBUG",include_path=self.sdg_path)
 
@@ -126,9 +126,7 @@ class MMLUBranchEvaluator(Evaluator):
             batch_size=self.batch_size,
             task_manager=tm,
         )
-
         results = mmlu_output["results"]
-        print(results)
 
         for task in self.tasks:
             mmlu_res = results[task]
