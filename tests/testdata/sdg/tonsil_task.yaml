@@ -1,0 +1,6 @@
+dataset_kwargs:
+  data_files:
+    test: /home/ec2-user/amaredia-mmlu/eval/sdg_path/tonsil_data.jsonl
+group: mmlu_pr
+include: _default_template_yaml
+task: tonsils
