@@ -5,7 +5,7 @@ import os
 
 # Third Party
 from lm_eval.evaluator import simple_evaluate  # type: ignore
-from lm_eval.tasks import TaskManager
+from lm_eval.tasks import TaskManager  # type: ignore
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
@@ -90,7 +90,7 @@ class MMLUBranchEvaluator(Evaluator):
         model_path,
         sdg_path: str,
         tasks: list[str],
-        model_dtype = 'bfloat16',
+        model_dtype="bfloat16",
         few_shots: int = 2,
         batch_size: int = 5,
     ) -> None:
@@ -109,14 +109,14 @@ class MMLUBranchEvaluator(Evaluator):
             overall_score       Average MMLUBranch score for the task group
             individual_scores   Individual MMLUBranch scores for each task in the task group
         """
-        #TODO: make this a parameter for class?
-        os.environ['TOKENIZERS_PARALLELISM'] = 'true'
+        # TODO: make this a parameter for class?
+        os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
         individual_scores: dict = {}
         agg_score: float = 0.0
         model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
 
-        tm = TaskManager(verbosity="DEBUG",include_path=self.sdg_path)
+        tm = TaskManager(verbosity="DEBUG", include_path=self.sdg_path)
 
         mmlu_output = simple_evaluate(
             model="hf",
