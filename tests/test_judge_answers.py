@@ -15,7 +15,7 @@ print(f"Turn 2 Score: {turn_scores[1]}")
 print(f"QA Pair 0:")
 pprint.pprint(qa_pairs[0])
 
-print(f"base_qa_pairs length: {len(qa_pairs)}")
+print(f"qa_pairs length: {len(qa_pairs)}")
 
 for qa_pair in qa_pairs:
     assert qa_pair.get("question_id") is not None

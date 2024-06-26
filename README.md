@@ -26,7 +26,7 @@ source venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt
 pip install -e .
-pip install vllm==0.3.3
+pip install vllm
 python -m vllm.entrypoints.openai.api_server --model instructlab/granite-7b-lab --tensor-parallel-size 1
 ```
 
@@ -65,7 +65,7 @@ eval_output/
 ```
 
 ```shell
-export INSTRUCT_LAB_EVAL_FIRST_N_QUESTIONS=10 # Optional if you want to shorten run times
+export INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=40 # Optional if you want to shorten run times
 python3 tests/test_judge_answers.py
 python3 tests/test_branch_judge_answers.py
 ```

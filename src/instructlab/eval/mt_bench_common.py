@@ -117,7 +117,7 @@ def load_judge_prompts(prompt_file: str) -> dict:
 
 
 def run_judge_single(
-    question, answer, judge, ref_answer, multi_turn=False, judgment=None
+    question, answer, judge, ref_answer, openai_client, multi_turn=False, judgment=None
 ):
     kwargs = {}
     model = judge.model_name
@@ -150,7 +150,9 @@ def run_judge_single(
     conv.append_message(conv.roles[1], None)
 
     if judgment is None:
-        judgment = chat_completion_openai(model, conv, temperature=0, max_tokens=2048)
+        judgment = chat_completion_openai(
+            openai_client, model, conv, temperature=0, max_tokens=2048
+        )
 
     if judge.prompt_template["output_format"] == "[[rating]]":
         match = re.search(one_score_pattern, judgment)
@@ -169,7 +171,7 @@ def run_judge_single(
     return rating, user_prompt, judgment
 
 
-def play_a_match_single(match: MatchSingle, output_file: str) -> dict:
+def play_a_match_single(openai_client, match: MatchSingle, output_file: str) -> dict:
     question, model, answer, judge, ref_answer, multi_turn = (
         match.question,
         match.model,
@@ -186,6 +188,7 @@ def play_a_match_single(match: MatchSingle, output_file: str) -> dict:
             answer,
             judge,
             ref_answer,
+            openai_client,
             multi_turn=multi_turn,
             judgment=judgment,
         )
@@ -215,10 +218,7 @@ def play_a_match_single(match: MatchSingle, output_file: str) -> dict:
     return result
 
 
-def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None) -> str:
-    if api_dict is not None:
-        openai.api_base = api_dict["api_base"]
-        openai.api_key = api_dict["api_key"]
+def chat_completion_openai(openai_client, model, conv, temperature, max_tokens) -> str:
     output = API_ERROR_OUTPUT
     for _ in range(API_MAX_RETRY):
         try:
@@ -232,16 +232,16 @@ def chat_completion_openai(model, conv, temperature, max_tokens, api_dict=None) 
                     messages[0]["content"] + "\n" + messages[1]["content"]
                 )
                 messages = messages[1:]
-            response = openai.ChatCompletion.create(
+            response = openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
                 n=1,
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            output = response["choices"][0]["message"]["content"]
+            output = response.choices[0].message.content
             break
-        except openai.error.OpenAIError as e:
+        except openai.OpenAIError as e:
             print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
 

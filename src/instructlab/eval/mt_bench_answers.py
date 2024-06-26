@@ -41,6 +41,7 @@ def get_answer(
     max_tokens: int,
     answer_file: str,
     force_temperature: float,
+    openai_client,
 ):
     """Answer a question with the model"""
     assert force_temperature is None or question.get("required_temperature") is None
@@ -62,7 +63,9 @@ def get_answer(
             conv.append_message(conv.roles[0], question["turns"][j])
             conv.append_message(conv.roles[1], None)
 
-            output = chat_completion_openai(model, conv, temperature, max_tokens)
+            output = chat_completion_openai(
+                openai_client, model, conv, temperature, max_tokens
+            )
 
             conv.update_last_message(output)
             turns.append(output)
@@ -85,6 +88,7 @@ def get_answer(
 
 def generate_answers(
     model_name,
+    model_api_base,
     branch=None,
     output_dir="eval_output",
     data_dir=None,
@@ -94,12 +98,10 @@ def generate_answers(
     num_choices=1,
     max_tokens=1024,
     max_workers=1,
-    model_api_base=None,
     bench_name="mt_bench",
 ):
     """Generate model answers to be judged"""
-    if model_api_base is not None:
-        openai.api_base = model_api_base
+    openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
 
     if data_dir is None:
         data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -125,6 +127,7 @@ def generate_answers(
                 max_tokens,
                 answer_file,
                 force_temperature,
+                openai_client,
             )
             futures.append(future)
 
