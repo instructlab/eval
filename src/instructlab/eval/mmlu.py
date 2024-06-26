@@ -6,6 +6,7 @@ import os
 # Third Party
 from lm_eval.evaluator import simple_evaluate  # type: ignore
 from lm_eval.tasks import TaskManager  # type: ignore
+import torch
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
@@ -58,6 +59,7 @@ class MMLUEvaluator(Evaluator):
             tasks=self.tasks,
             num_fewshot=self.few_shots,
             batch_size=self.batch_size,
+            device=("cuda" if torch.cuda.is_available() else "cpu"),
         )
 
         results = mmlu_output["results"]
