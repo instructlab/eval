@@ -11,7 +11,7 @@ import torch
 # First Party
 from instructlab.eval.evaluator import Evaluator
 
-MMLU_TASKS = (
+MMLU_TASKS = [
     "mmlu_abstract_algebra",
     "mmlu_anatomy",
     "mmlu_astronomy",
@@ -73,7 +73,7 @@ MMLU_TASKS = (
     "mmlu_us_foreign_policy",
     "mmlu_virology",
     "mmlu_world_religions",
-)
+]
 
 
 class MMLUEvaluator(Evaluator):
@@ -91,7 +91,7 @@ class MMLUEvaluator(Evaluator):
     def __init__(
         self,
         model_path,
-        tasks: tuple[str, ...] = MMLU_TASKS,
+        tasks: list[str] = MMLU_TASKS,
         model_dtype="bfloat16",
         few_shots: int = 2,
         batch_size: int = 5,
