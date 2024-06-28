@@ -17,8 +17,8 @@ from fastchat.model.model_adapter import get_conversation_template  # type: igno
 import openai
 
 # API setting constants
-API_MAX_RETRY = 16
-API_RETRY_SLEEP = 10
+API_MAX_RETRY = 4
+API_RETRY_SLEEP = 4
 API_ERROR_OUTPUT = "$ERROR$"
 
 # Categories that need reference answers
