@@ -68,7 +68,7 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
                 # Generate a consistent hash to have consistent question_id across qna_files from different runs
                 str_bytes = bytes(q, "UTF-8")
                 m = hashlib.md5(str_bytes)
-                question_id = str(int(m.hexdigest(), base=16))
+                question_id = str(int(m.hexdigest()[:8], base=16))
                 question_lst.append(
                     {
                         "qna_file": qna_file,
