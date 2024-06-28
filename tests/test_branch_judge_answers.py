@@ -23,3 +23,4 @@ for qa_pair in qa_pairs:
     assert qa_pair.get("category") is not None
     assert qa_pair.get("question") is not None
     assert qa_pair.get("answer") is not None
+    assert qa_pair.get("qna_file") is not None

@@ -105,26 +105,32 @@ def make_judgment(
     answer_df = pd.read_json(answer_file, lines=True)
 
     # Join to get questions with answers
+    join_columns = ["question_id", "choices", "turns", "category"]
+    if bench_name == "mt_bench_branch":
+        join_columns.append("qna_file")
+
     joined_df = question_df.join(
         answer_df.set_index("question_id"), on="question_id", rsuffix="_answer"
-    )[["question_id", "choices", "turns", "category"]]
+    )[join_columns]
     # Join to get scores
+    join_columns.append("score")
     joined_df = judgment_df_all.join(
         joined_df.set_index("question_id"), on="question_id", lsuffix="_judgment"
-    )[["question_id", "choices", "turns", "score", "category"]]
+    )[join_columns]
     joined_df = joined_df[joined_df["score"] != -1]
 
     qa_pairs = []
     for _, row in joined_df.iterrows():
-        qa_pairs.append(
-            {
-                "question_id": row["question_id"],
-                "score": row["score"],
-                "category": row["category"],
-                "question": row["turns"],
-                "answer": row["choices"],
-            }
-        )
+        qa_pair = {
+            "question_id": row["question_id"],
+            "score": row["score"],
+            "category": row["category"],
+            "question": row["turns"],
+            "answer": row["choices"],
+        }
+        if bench_name == "mt_bench_branch":
+            qa_pair["qna_file"] = row["qna_file"]
+        qa_pairs.append(qa_pair)
     return overall_score, qa_pairs, turn_scores
 
 
