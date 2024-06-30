@@ -194,12 +194,15 @@ class MMLUBranchEvaluator(Evaluator):
         )
         results = mmlu_output["results"]
 
-        for task in self.tasks:
-            mmlu_res = results[task]
-            agg_score += float(mmlu_res["acc,none"])
-            individual_scores[task] = {}
-            individual_scores[task]["score"] = float(mmlu_res["acc,none"])
-            individual_scores[task]["stderr"] = float(mmlu_res["acc_stderr,none"])
+        for task, result in results.items():
+            if task in self.tasks:
+                agg_score += float(result["acc,none"])
+            else:
+                individual_scores[task] = {
+                    "score": float(result["acc,none"]),
+                    "stderr": float(result["acc_stderr,none"]),
+                }
 
         overall_score = float(agg_score / len(self.tasks))
+
         return overall_score, individual_scores
