@@ -77,7 +77,9 @@ def make_judgment(
     bench_name="mt_bench",
 ):
     """Create judgment output"""
-    judgment_df_all = pd.read_json(judgment_file, lines=True)
+    judgment_df_all = pd.read_json(
+        judgment_file, lines=True, dtype={"question_id": str}
+    )
     judgment_df = judgment_df_all[["model", "score", "turn"]]
     judgment_df = judgment_df[judgment_df["score"] != -1]
 
@@ -100,9 +102,9 @@ def make_judgment(
         else:
             turn_scores.append("N/A")
 
-    question_df = pd.read_json(question_file, lines=True)
+    question_df = pd.read_json(question_file, lines=True, dtype={"question_id": str})
 
-    answer_df = pd.read_json(answer_file, lines=True)
+    answer_df = pd.read_json(answer_file, lines=True, dtype={"question_id": str})
 
     # Join to get questions with answers
     join_columns = ["question_id", "choices", "turns", "category"]
