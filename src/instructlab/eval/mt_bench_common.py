@@ -220,7 +220,7 @@ def play_a_match_single(openai_client, match: MatchSingle, output_file: str) -> 
 
 def chat_completion_openai(openai_client, model, conv, temperature, max_tokens) -> str:
     output = API_ERROR_OUTPUT
-    for _ in range(API_MAX_RETRY):
+    for i in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
             if (
@@ -242,7 +242,9 @@ def chat_completion_openai(openai_client, model, conv, temperature, max_tokens) 
             output = response.choices[0].message.content
             break
         except openai.OpenAIError as e:
-            print(type(e), e)
+            if i == API_MAX_RETRY - 1:
+                # Print error on last try
+                print(type(e), e)
             time.sleep(API_RETRY_SLEEP)
 
     return output
