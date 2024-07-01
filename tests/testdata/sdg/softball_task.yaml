@@ -1,6 +1,0 @@
-dataset_kwargs:
-  data_files:
-    test: softball_data.jsonl
-group: mmlu_pr
-include: _default_template_yaml
-task: softball
