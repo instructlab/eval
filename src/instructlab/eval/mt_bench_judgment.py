@@ -243,7 +243,7 @@ def judge_model(
             ):
                 pass
 
-        return question_file, output_file, answer_file
+    return question_file, output_file, answer_file
 
 
 def generate_judgment(

@@ -116,9 +116,17 @@ def generate_answers(
     if os.path.isfile(answer_file):
         os.remove(answer_file)
 
+    first_n = None
+    first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
+    if first_n_env:
+        first_n = int(first_n_env)
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []
-        for question in questions:
+        for i, question in enumerate(questions):
+            if first_n is not None and i >= first_n:
+                break
+
             future = executor.submit(
                 get_answer,
                 question,
