@@ -84,6 +84,8 @@ class MMLUEvaluator(Evaluator):
         batch_size   number of GPUs
     """
 
+    name = "mmlu"
+
     def __init__(
         self,
         model_path,
@@ -146,6 +148,8 @@ class MMLUBranchEvaluator(Evaluator):
         few_shots   number of examples
         batch_size  number of GPUs
     """
+
+    name = "mmlu_branch"
 
     def __init__(
         self,

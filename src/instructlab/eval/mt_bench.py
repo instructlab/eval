@@ -22,6 +22,8 @@ class MTBenchEvaluator(Evaluator):
         max_workers         Max parallel workers to run the evaluation with
     """
 
+    name = "mt_bench"
+
     def __init__(
         self,
         model_name: str,
@@ -81,6 +83,8 @@ class MTBenchBranchEvaluator(Evaluator):
         output_dir              The directory to use for evaluation output
         max_workers             Max parallel workers to run the evaluation with
     """
+
+    name = "mt_bench_branch"
 
     def __init__(
         self,
