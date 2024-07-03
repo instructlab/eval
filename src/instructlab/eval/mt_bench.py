@@ -6,6 +6,10 @@ from instructlab.eval import (
     mt_bench_branch_generator,
     mt_bench_judgment,
 )
+from instructlab.eval.exceptions import (
+    MTBenchBranchEvaluationError,
+    MTBenchEvaluationError,
+)
 
 # Local
 from .evaluator import Evaluator
@@ -43,12 +47,17 @@ class MTBenchEvaluator(Evaluator):
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
         """
-        mt_bench_answers.generate_answers(
-            self.model_name,
-            server_url,
-            output_dir=self.output_dir,
-            max_workers=self.max_workers,
-        )
+        try:
+            mt_bench_answers.generate_answers(
+                self.model_name,
+                server_url,
+                output_dir=self.output_dir,
+                max_workers=self.max_workers,
+            )
+        except Exception as exc:
+            raise MTBenchEvaluationError(
+                model=self.model_name, judge_model=self.judge_model_name, cause=exc
+            ) from exc
 
     def judge_answers(self, server_url) -> tuple:
         """
@@ -62,13 +71,18 @@ class MTBenchEvaluator(Evaluator):
             qa_pairs        Question and answer pairs (with scores) from the evaluation
             turn_scores     A list of indexed turn scores
         """
-        return mt_bench_judgment.generate_judgment(
-            self.model_name,
-            self.judge_model_name,
-            server_url,
-            max_workers=self.max_workers,
-            output_dir=self.output_dir,
-        )
+        try:
+            return mt_bench_judgment.generate_judgment(
+                self.model_name,
+                self.judge_model_name,
+                server_url,
+                max_workers=self.max_workers,
+                output_dir=self.output_dir,
+            )
+        except Exception as exc:
+            raise MTBenchEvaluationError(
+                model=self.model_name, judge_model=self.judge_model_name, cause=exc
+            ) from exc
 
 
 class MTBenchBranchEvaluator(Evaluator):
@@ -109,21 +123,26 @@ class MTBenchBranchEvaluator(Evaluator):
         Attributes
             server_url  Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
         """
-        mt_bench_branch_generator.generate(
-            self.judge_model_name,
-            self.branch,
-            self.taxonomy_git_repo_path,
-            self.output_dir,
-        )
-        mt_bench_answers.generate_answers(
-            self.model_name,
-            server_url,
-            branch=self.branch,
-            output_dir=self.output_dir,
-            data_dir=self.output_dir,
-            max_workers=self.max_workers,
-            bench_name="mt_bench_branch",
-        )
+        try:
+            mt_bench_branch_generator.generate(
+                self.judge_model_name,
+                self.branch,
+                self.taxonomy_git_repo_path,
+                self.output_dir,
+            )
+            mt_bench_answers.generate_answers(
+                self.model_name,
+                server_url,
+                branch=self.branch,
+                output_dir=self.output_dir,
+                data_dir=self.output_dir,
+                max_workers=self.max_workers,
+                bench_name="mt_bench_branch",
+            )
+        except Exception as exc:
+            raise MTBenchBranchEvaluationError(
+                model=self.model_name, judge_model=self.judge_model_name, cause=exc
+            ) from exc
 
     def judge_answers(self, server_url) -> tuple:
         """
@@ -135,14 +154,19 @@ class MTBenchBranchEvaluator(Evaluator):
         Returns:
             qa_pairs        Question and answer pairs (with scores) from the evaluation
         """
-        _, qa_pairs, _ = mt_bench_judgment.generate_judgment(
-            self.model_name,
-            self.judge_model_name,
-            server_url,
-            branch=self.branch,
-            max_workers=self.max_workers,
-            output_dir=self.output_dir,
-            data_dir=self.output_dir,
-            bench_name="mt_bench_branch",
-        )
-        return qa_pairs
+        try:
+            _, qa_pairs, _ = mt_bench_judgment.generate_judgment(
+                self.model_name,
+                self.judge_model_name,
+                server_url,
+                branch=self.branch,
+                max_workers=self.max_workers,
+                output_dir=self.output_dir,
+                data_dir=self.output_dir,
+                bench_name="mt_bench_branch",
+            )
+            return qa_pairs
+        except Exception as exc:
+            raise MTBenchBranchEvaluationError(
+                model=self.model_name, judge_model=self.judge_model_name, cause=exc
+            ) from exc

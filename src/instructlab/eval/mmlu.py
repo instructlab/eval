@@ -10,6 +10,7 @@ import torch
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
+from instructlab.eval.exceptions import MMLUBranchEvaluationError, MMLUEvaluationError
 
 MMLU_TASKS = [
     "mmlu_abstract_algebra",
@@ -112,27 +113,35 @@ class MMLUEvaluator(Evaluator):
         # TODO: make this a parameter for class?
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+        # attempt evaluation of given model
         individual_scores: dict = {}
         agg_score: float = 0.0
         model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
-        mmlu_output = simple_evaluate(
-            model="hf",
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            device=("cuda" if torch.cuda.is_available() else "cpu"),
-        )
-
+        try:
+            mmlu_output = simple_evaluate(
+                model="hf",
+                model_args=model_args,
+                tasks=self.tasks,
+                num_fewshot=self.few_shots,
+                batch_size=self.batch_size,
+                device=("cuda" if torch.cuda.is_available() else "cpu"),
+            )
+        except Exception as exc:
+            raise MMLUEvaluationError(model=self.model_path, cause=exc) from exc
         results = mmlu_output["results"]
 
-        for task in self.tasks:
-            mmlu_res = results[task]
-            agg_score += float(mmlu_res["acc,none"])
-            individual_scores[task] = {}
-            individual_scores[task]["score"] = float(mmlu_res["acc,none"])
-            individual_scores[task]["stderr"] = float(mmlu_res["acc_stderr,none"])
+        # iterate through tasks and get individual scores for each
+        try:
+            for task in self.tasks:
+                mmlu_res = results[task]
+                agg_score += float(mmlu_res["acc,none"])
+                individual_scores[task] = {}
+                individual_scores[task]["score"] = float(mmlu_res["acc,none"])
+                individual_scores[task]["stderr"] = float(mmlu_res["acc_stderr,none"])
+        except Exception as exc:
+            raise MMLUEvaluationError(model=self.model_path, cause=exc) from exc
 
+        # calculate overall score and return overall and individual scores
         overall_score = float(agg_score / len(self.tasks))
         return overall_score, individual_scores
 
@@ -178,31 +187,41 @@ class MMLUBranchEvaluator(Evaluator):
         # TODO: make this a parameter for class?
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
+        # attempt evaluation of given model with the given sdg path
         individual_scores: dict = {}
         agg_score: float = 0.0
         model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
-
         tm = TaskManager(verbosity="DEBUG", include_path=self.sdg_path)
+        try:
+            mmlu_output = simple_evaluate(
+                model="hf",
+                model_args=model_args,
+                tasks=self.tasks,
+                num_fewshot=self.few_shots,
+                batch_size=self.batch_size,
+                task_manager=tm,
+            )
+            results = mmlu_output["results"]
+        except Exception as exc:
+            raise MMLUBranchEvaluationError(
+                model=self.model_path, sdg_path=self.sdg_path, cause=exc
+            ) from exc
 
-        mmlu_output = simple_evaluate(
-            model="hf",
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            task_manager=tm,
-        )
-        results = mmlu_output["results"]
+        # iterate through tasks and results and get individual scores for each
+        try:
+            for task, result in results.items():
+                if task in self.tasks:
+                    agg_score += float(result["acc,none"])
+                else:
+                    individual_scores[task] = {
+                        "score": float(result["acc,none"]),
+                        "stderr": float(result["acc_stderr,none"]),
+                    }
+        except Exception as exc:
+            raise MMLUBranchEvaluationError(
+                model=self.model_path, sdg_path=self.sdg_path, cause=exc
+            ) from exc
 
-        for task, result in results.items():
-            if task in self.tasks:
-                agg_score += float(result["acc,none"])
-            else:
-                individual_scores[task] = {
-                    "score": float(result["acc,none"]),
-                    "stderr": float(result["acc_stderr,none"]),
-                }
-
+        # calculate overall score and return overall and individual scores
         overall_score = float(agg_score / len(self.tasks))
-
         return overall_score, individual_scores
