@@ -135,7 +135,7 @@ class MTBenchBranchEvaluator(Evaluator):
         Returns:
             qa_pairs        Question and answer pairs (with scores) from the evaluation
         """
-        _, qa_pairs, _ = mt_bench_judgment.generate_judgment(
+        _, qa_pairs, _, error_rate = mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
             server_url,
@@ -145,4 +145,4 @@ class MTBenchBranchEvaluator(Evaluator):
             data_dir=self.output_dir,
             bench_name="mt_bench_branch",
         )
-        return qa_pairs
+        return qa_pairs, error_rate
