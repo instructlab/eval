@@ -81,7 +81,10 @@ def make_judgment(
         judgment_file, lines=True, dtype={"question_id": str}
     )
     judgment_df = judgment_df_all[["model", "score", "turn"]]
+    judgments_len = len(judgment_df)
     judgment_df = judgment_df[judgment_df["score"] != -1]
+    error_free_judgments_len = len(judgment_df)
+    error_rate = (judgments_len - error_free_judgments_len) / judgments_len
 
     turn_scores = []
     # First turn
@@ -133,7 +136,7 @@ def make_judgment(
         if bench_name == "mt_bench_branch":
             qa_pair["qna_file"] = row["qna_file"]
         qa_pairs.append(qa_pair)
-    return overall_score, qa_pairs, turn_scores
+    return overall_score, qa_pairs, turn_scores, error_rate
 
 
 def judge_model(
