@@ -10,6 +10,7 @@ import torch
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
+from instructlab.eval.exceptions import ModelNotFoundError
 
 # Local
 from .logger_config import setup_logger
@@ -77,6 +78,32 @@ MMLU_TASKS = [
 ]
 
 
+def run_mmlu(
+    model_path, model_dtype, tasks, few_shots, batch_size, sdg_path=None
+) -> dict:
+    try:
+        model_args = f"pretrained={model_path},dtype={model_dtype}"
+        tm = None
+        if sdg_path is not None:
+            tm = TaskManager(verbosity="DEBUG", include_path=sdg_path)
+        mmlu_output = simple_evaluate(
+            model="hf",
+            model_args=model_args,
+            tasks=tasks,
+            num_fewshot=few_shots,
+            batch_size=batch_size,
+            device=("cuda" if torch.cuda.is_available() else "cpu"),
+            task_manager=tm,
+        )
+        results = mmlu_output["results"]
+        return results
+    except OSError as ose:
+        # Having a better exception from lm_eval would be helpful
+        if "is not a valid model" in str(ose):
+            raise ModelNotFoundError(model_path) from ose
+        raise
+
+
 class MMLUEvaluator(Evaluator):
     """
     Child class of an Evaluator for Massive Multitask Language Understanding (MMLU)
@@ -120,17 +147,14 @@ class MMLUEvaluator(Evaluator):
 
         individual_scores: dict = {}
         agg_score: float = 0.0
-        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
-        mmlu_output = simple_evaluate(
-            model="hf",
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            device=("cuda" if torch.cuda.is_available() else "cpu"),
-        )
 
-        results = mmlu_output["results"]
+        results = run_mmlu(
+            self.model_path,
+            self.model_dtype,
+            self.tasks,
+            self.few_shots,
+            self.batch_size,
+        )
 
         for task in self.tasks:
             mmlu_res = results[task]
@@ -187,19 +211,15 @@ class MMLUBranchEvaluator(Evaluator):
 
         individual_scores: dict = {}
         agg_score: float = 0.0
-        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
 
-        tm = TaskManager(verbosity="DEBUG", include_path=self.sdg_path)
-
-        mmlu_output = simple_evaluate(
-            model="hf",
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            task_manager=tm,
+        results = run_mmlu(
+            self.model_path,
+            self.model_dtype,
+            self.tasks,
+            self.few_shots,
+            self.batch_size,
+            self.sdg_path,
         )
-        results = mmlu_output["results"]
 
         for task, result in results.items():
             if task in self.tasks:
