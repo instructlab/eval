@@ -17,6 +17,11 @@ import time
 from fastchat.model.model_adapter import get_conversation_template  # type: ignore
 import openai
 
+# Local
+from .logger_config import setup_logger
+
+logger = setup_logger(__name__)
+
 # API setting constants
 API_MAX_RETRY = 4
 API_RETRY_SLEEP = 4
@@ -85,6 +90,7 @@ def load_model_answers(answer_dir: str, model_name=None) -> dict:
     The return value is a python dict of type:
     Dict[model_name: str -> Dict[question_id: int -> answer: dict]]
     """
+    logger.debug(locals())
     model_answers = {}
     for root, _, files in os.walk(answer_dir):
         for filename in files:
@@ -99,6 +105,7 @@ def load_model_answers(answer_dir: str, model_name=None) -> dict:
                         answer[l["question_id"]] = l
                 model_answers[model_name or file_model_name] = answer
                 if model_name == file_model_name:
+                    logger.debug("Found answer file matching: %s", model_name)
                     break
     return model_answers
 
@@ -109,6 +116,7 @@ def load_judge_prompts(prompt_file: str) -> dict:
     The return value is a python dict of type:
     Dict[judge_name: str -> dict]
     """
+    logger.debug(locals())
     prompts = {}
     with open(prompt_file, encoding="utf-8") as fin:
         for line in fin:
@@ -176,6 +184,11 @@ def run_judge_single(
             rating = ast.literal_eval(match.groups()[0])
         else:
             rating = -1
+            logger.debug(
+                "Received invalid judgment for question %s with judgment: %s",
+                question["question_id"],
+                judgment,
+            )
     else:
         raise ValueError(
             f"invalid output format: {judge.prompt_template['output_format']}"
@@ -263,6 +276,8 @@ def chat_completion_openai(
             if i == API_MAX_RETRY - 1:
                 # Print error on last try
                 print(type(e), e)
+            else:
+                logger.debug(e)
             time.sleep(API_RETRY_SLEEP)
 
     return output
@@ -290,6 +305,7 @@ def check_data(questions, model_answers, ref_answers, models, judges):
 
 
 def get_model_list(answer_dir):
+    logger.debug(locals())
     file_paths = glob.glob(f"{answer_dir}/*.jsonl")
     file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
     return file_names

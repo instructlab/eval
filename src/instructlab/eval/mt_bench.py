@@ -9,6 +9,9 @@ from instructlab.eval import (
 
 # Local
 from .evaluator import Evaluator
+from .logger_config import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class MTBenchEvaluator(Evaluator):
@@ -46,6 +49,7 @@ class MTBenchEvaluator(Evaluator):
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
         """
+        logger.debug(locals())
         mt_bench_answers.generate_answers(
             self.model_name,
             server_url,
@@ -65,6 +69,7 @@ class MTBenchEvaluator(Evaluator):
             qa_pairs        Question and answer pairs (with scores) from the evaluation
             turn_scores     A list of indexed turn scores
         """
+        logger.debug(locals())
         return mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
@@ -116,6 +121,7 @@ class MTBenchBranchEvaluator(Evaluator):
         Attributes
             server_url  Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
         """
+        logger.debug(locals())
         mt_bench_branch_generator.generate(
             self.judge_model_name,
             self.branch,
@@ -142,6 +148,7 @@ class MTBenchBranchEvaluator(Evaluator):
         Returns:
             qa_pairs        Question and answer pairs (with scores) from the evaluation
         """
+        logger.debug(locals())
         _, qa_pairs, _, error_rate = mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
