@@ -151,6 +151,7 @@ def judge_model(
     model_list=None,
     max_workers=1,
     first_n=None,
+    merge_system_user_message=False,
 ):
     """Judge the model based on questions and reference answers"""
     package_data_dir = os.path.join(os.path.dirname(__file__), "data")
@@ -234,11 +235,21 @@ def judge_model(
     # Play matches
     if max_workers == 1:
         for match in tqdm(matches):
-            play_a_match_single(openai_client, match, output_file=output_file)
+            play_a_match_single(
+                openai_client,
+                match,
+                output_file=output_file,
+                merge_system_user_message=merge_system_user_message,
+            )
     else:
 
         def play_a_match_wrapper(match):
-            play_a_match_single(openai_client, match, output_file=output_file)
+            play_a_match_single(
+                openai_client,
+                match,
+                output_file=output_file,
+                merge_system_user_message=merge_system_user_message,
+            )
 
         np.random.seed(0)
         np.random.shuffle(matches)
@@ -263,6 +274,7 @@ def generate_judgment(
     model_list=None,
     max_workers=1,
     first_n=None,
+    merge_system_user_message=False,
 ):
     """Generate judgment with scores and qa_pairs for a model"""
     openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
@@ -282,6 +294,7 @@ def generate_judgment(
         model_list=model_list,
         max_workers=max_workers,
         first_n=first_n,
+        merge_system_user_message=merge_system_user_message,
     )
 
     return make_judgment(

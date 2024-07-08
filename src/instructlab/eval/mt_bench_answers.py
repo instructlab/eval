@@ -65,7 +65,11 @@ def get_answer(
             conv.append_message(conv.roles[1], None)
 
             output = chat_completion_openai(
-                openai_client, model, conv, temperature, max_tokens
+                openai_client,
+                model,
+                conv,
+                temperature,
+                max_tokens,
             )
 
             conv.update_last_message(output)
