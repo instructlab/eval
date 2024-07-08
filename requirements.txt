@@ -4,6 +4,7 @@ GitPython>=3.1.42,<4.0.0
 shortuuid
 openai>=1.13.3,<2.0.0
 psutil
+rich==13.7.1
 torch
 transformers
 accelerate

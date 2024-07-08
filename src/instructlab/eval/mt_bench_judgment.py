@@ -9,6 +9,7 @@ import openai
 import pandas as pd
 
 # Local
+from .logger_config import setup_logger
 from .mt_bench_common import (
     NEED_REF_CATS,
     Judge,
@@ -21,6 +22,8 @@ from .mt_bench_common import (
     load_questions,
     play_a_match_single,
 )
+
+logger = setup_logger(__name__)
 
 
 def make_match_single(
@@ -77,6 +80,7 @@ def make_judgment(
     bench_name="mt_bench",
 ):
     """Create judgment output"""
+    logger.debug(locals())
     judgment_df_all = pd.read_json(
         judgment_file, lines=True, dtype={"question_id": str}
     )
@@ -85,6 +89,9 @@ def make_judgment(
     judgment_df = judgment_df[judgment_df["score"] != -1]
     error_free_judgments_len = len(judgment_df)
     error_rate = (judgments_len - error_free_judgments_len) / judgments_len
+    logger.debug("#judgments: %s", judgments_len)
+    logger.debug("#error free judgments: %s", error_free_judgments_len)
+    logger.debug("error rate: %s", error_rate)
 
     turn_scores = []
     # First turn
@@ -152,6 +159,7 @@ def judge_model(
     first_n=None,
 ):
     """Judge the model based on questions and reference answers"""
+    logger.debug(locals())
     package_data_dir = os.path.join(os.path.dirname(__file__), "data")
     if data_dir is None:
         data_dir = package_data_dir
@@ -188,6 +196,7 @@ def judge_model(
     output_file = f"{output_base_dir}/model_judgment/{judge_model_name}_single.jsonl"
     if os.path.isfile(output_file):
         os.remove(output_file)
+        logger.debug("Removing previous judgment file: %s", output_file)
 
     check_data(questions, model_answers, ref_answers, models, judges)
 
@@ -264,11 +273,13 @@ def generate_judgment(
     first_n=None,
 ):
     """Generate judgment with scores and qa_pairs for a model"""
+    logger.debug(locals())
     openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
 
     first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
     if first_n_env is not None and first_n is None:
         first_n = int(first_n_env)
+        logger.debug("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=%s", first_n)
 
     question_file, judgment_file, answer_file = judge_model(
         model_name,

@@ -11,10 +11,14 @@ import shortuuid
 import yaml
 
 # Local
+from .logger_config import setup_logger
 from .mt_bench_common import bench_dir
+
+logger = setup_logger(__name__)
 
 
 def get_file_paths(directory):
+    logger.debug(locals())
     file_paths = []
     for root, _, files in os.walk(directory):
         for file in files:
@@ -31,6 +35,7 @@ def read_qna(fn):
 
 def generate(judge_model_name, branch, taxonomy_dir, output_dir):
     """Create questions and reference answers from taxonomy"""
+    logger.debug(locals())
     restore_branch = None
     try:
         if branch is not None:
@@ -89,20 +94,21 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
                     }
                 )
 
-        print(f"generated {len(question_lst)} questions")
+        logger.debug("Generated %s questions", len(question_lst))
 
         output_base_dir = bench_dir(output_dir, "mt_bench_branch", branch)
         os.makedirs(output_base_dir, exist_ok=True)
         question_fn = "question.jsonl"
-        with open(
-            os.path.join(output_base_dir, question_fn), "w", encoding="utf-8"
-        ) as outfile:
+        question_file = os.path.join(output_base_dir, question_fn)
+        logger.debug("Generating question file: %s", question_file)
+        with open(question_file, "w", encoding="utf-8") as outfile:
             for entry in question_lst:
                 json.dump(entry, outfile)
                 outfile.write("\n")
 
         answer_file_dir = os.path.join(output_base_dir, "reference_answer")
         answer_file = os.path.join(answer_file_dir, f"{judge_model_name}.jsonl")
+        logger.debug("Generating answer file: %s", answer_file)
         os.makedirs(os.path.dirname(answer_file), exist_ok=True)
         with open(
             answer_file,

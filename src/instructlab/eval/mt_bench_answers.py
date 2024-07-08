@@ -12,6 +12,7 @@ import shortuuid
 import tqdm
 
 # Local
+from .logger_config import setup_logger
 from .mt_bench_common import (
     bench_dir,
     chat_completion_openai,
@@ -19,9 +20,12 @@ from .mt_bench_common import (
     temperature_config,
 )
 
+logger = setup_logger(__name__)
+
 
 def reorg_answer_file(answer_file):
     """Sort by question id and de-duplication"""
+    logger.debug(locals())
     answers = {}
     with open(answer_file, "r", encoding="utf-8") as fin:
         for l in fin:
@@ -101,6 +105,7 @@ def generate_answers(
     bench_name="mt_bench",
 ):
     """Generate model answers to be judged"""
+    logger.debug(locals())
     openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
 
     if data_dir is None:
@@ -115,11 +120,13 @@ def generate_answers(
     answer_file = f"{output_base_dir}/model_answer/{model_name}.jsonl"
     if os.path.isfile(answer_file):
         os.remove(answer_file)
+        logger.debug("Removing previous answer file: %s", answer_file)
 
     first_n = None
     first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
     if first_n_env:
         first_n = int(first_n_env)
+        logger.debug("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=%s", first_n)
 
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = []

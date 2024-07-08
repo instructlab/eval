@@ -11,6 +11,11 @@ import torch
 # First Party
 from instructlab.eval.evaluator import Evaluator
 
+# Local
+from .logger_config import setup_logger
+
+logger = setup_logger(__name__)
+
 MMLU_TASKS = [
     "mmlu_abstract_algebra",
     "mmlu_anatomy",
@@ -109,6 +114,7 @@ class MMLUEvaluator(Evaluator):
             overall_score       MMLU score for the overall model evaluation
             individual_scores   Individual MMLU score for each task
         """
+        logger.debug(locals())
         # TODO: make this a parameter for class?
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
@@ -175,6 +181,7 @@ class MMLUBranchEvaluator(Evaluator):
             overall_score       Average MMLUBranch score for the task group
             individual_scores   Individual MMLUBranch scores for each task in the task group
         """
+        logger.debug(locals())
         # TODO: make this a parameter for class?
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
