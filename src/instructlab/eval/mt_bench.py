@@ -16,10 +16,11 @@ class MTBenchEvaluator(Evaluator):
     Child class of an Evaluator for Multi-turn Benchmark (MT-Bench)
 
     Attributes
-        model_name          Name of the model to evaluate
-        judge_model_name    Name of the judge model
-        output_dir          The directory to use for evaluation output
-        max_workers         Max parallel workers to run the evaluation with
+        model_name                  Name of the model to evaluate
+        judge_model_name            Name of the judge model
+        output_dir                  The directory to use for evaluation output
+        max_workers                 Max parallel workers to run the evaluation with
+        merge_system_user_message   Boolean indicating whether to merge system and user messages (required for Mistral based judges)
     """
 
     name = "mt_bench"
@@ -30,11 +31,13 @@ class MTBenchEvaluator(Evaluator):
         judge_model_name: str,
         output_dir: str = "eval_output",
         max_workers: int = 40,
+        merge_system_user_message: bool = False,
     ) -> None:
         self.model_name = model_name
         self.judge_model_name = judge_model_name
         self.output_dir = output_dir
         self.max_workers = max_workers
+        self.merge_system_user_message = merge_system_user_message
 
     def gen_answers(self, server_url) -> None:
         """
@@ -68,6 +71,7 @@ class MTBenchEvaluator(Evaluator):
             server_url,
             max_workers=self.max_workers,
             output_dir=self.output_dir,
+            merge_system_user_message=self.merge_system_user_message,
         )
 
 
@@ -76,12 +80,13 @@ class MTBenchBranchEvaluator(Evaluator):
     Child class of an Evaluator for MT-Bench-Branch Benchmark
 
     Attributes
-        model_name              Name of the model to evaluate
-        judge_model_name        Name of the judge model
-        taxonomy_git_repo_path  Taxonomy git repo path
-        branch                  Branch of taxonomy repo to eval QNAs against model
-        output_dir              The directory to use for evaluation output
-        max_workers             Max parallel workers to run the evaluation with
+        model_name                  Name of the model to evaluate
+        judge_model_name            Name of the judge model
+        taxonomy_git_repo_path      Taxonomy git repo path
+        branch                      Branch of taxonomy repo to eval QNAs against model
+        output_dir                  The directory to use for evaluation output
+        max_workers                 Max parallel workers to run the evaluation with
+        merge_system_user_message   Boolean indicating whether to merge system and user messages (required for Mistral based judges)
     """
 
     name = "mt_bench_branch"
@@ -94,6 +99,7 @@ class MTBenchBranchEvaluator(Evaluator):
         branch: str,
         output_dir: str = "eval_output",
         max_workers: int = 40,
+        merge_system_user_message: bool = False,
     ) -> None:
         self.model_name = model_name
         self.judge_model_name = judge_model_name
@@ -101,6 +107,7 @@ class MTBenchBranchEvaluator(Evaluator):
         self.branch = branch
         self.output_dir = output_dir
         self.max_workers = max_workers
+        self.merge_system_user_message = merge_system_user_message
 
     def gen_answers(self, server_url) -> None:
         """
@@ -144,5 +151,6 @@ class MTBenchBranchEvaluator(Evaluator):
             output_dir=self.output_dir,
             data_dir=self.output_dir,
             bench_name="mt_bench_branch",
+            merge_system_user_message=self.merge_system_user_message,
         )
         return qa_pairs, error_rate

@@ -117,7 +117,14 @@ def load_judge_prompts(prompt_file: str) -> dict:
 
 
 def run_judge_single(
-    question, answer, judge, ref_answer, openai_client, multi_turn=False, judgment=None
+    question,
+    answer,
+    judge,
+    ref_answer,
+    openai_client,
+    multi_turn=False,
+    judgment=None,
+    merge_system_user_message=False,
 ):
     kwargs = {}
     model = judge.model_name
@@ -151,7 +158,12 @@ def run_judge_single(
 
     if judgment is None:
         judgment = chat_completion_openai(
-            openai_client, model, conv, temperature=0, max_tokens=2048
+            openai_client,
+            model,
+            conv,
+            temperature=0,
+            max_tokens=2048,
+            merge_system_user_message=merge_system_user_message,
         )
 
     if judge.prompt_template["output_format"] == "[[rating]]":
@@ -171,7 +183,9 @@ def run_judge_single(
     return rating, user_prompt, judgment
 
 
-def play_a_match_single(openai_client, match: MatchSingle, output_file: str) -> dict:
+def play_a_match_single(
+    openai_client, match: MatchSingle, output_file: str, merge_system_user_message: bool
+) -> dict:
     question, model, answer, judge, ref_answer, multi_turn = (
         match.question,
         match.model,
@@ -191,6 +205,7 @@ def play_a_match_single(openai_client, match: MatchSingle, output_file: str) -> 
             openai_client,
             multi_turn=multi_turn,
             judgment=judgment,
+            merge_system_user_message=merge_system_user_message,
         )
         score, user_prompt, judgment = retval
 
@@ -218,13 +233,15 @@ def play_a_match_single(openai_client, match: MatchSingle, output_file: str) -> 
     return result
 
 
-def chat_completion_openai(openai_client, model, conv, temperature, max_tokens) -> str:
+def chat_completion_openai(
+    openai_client, model, conv, temperature, max_tokens, merge_system_user_message=False
+) -> str:
     output = API_ERROR_OUTPUT
     for i in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
             if (
-                os.environ.get("ILAB_EVAL_MERGE_SYS_USR")
+                merge_system_user_message
                 and messages[0]["role"] == "system"
                 and messages[1]["role"] == "user"
             ):
