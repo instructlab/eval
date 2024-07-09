@@ -62,7 +62,7 @@ class MatchSingle:
     model: str
     answer: dict
     judge: Judge
-    ref_answer: dict = None  # type: ignore[assignment]
+    ref_answer: Optional[dict] = None
     multi_turn: bool = False
 
 
