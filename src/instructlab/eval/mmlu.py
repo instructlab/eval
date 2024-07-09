@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Standard
+from typing import Optional
 import os
 
 # Third Party
@@ -10,7 +11,11 @@ import torch
 
 # First Party
 from instructlab.eval.evaluator import Evaluator
-from instructlab.eval.exceptions import ModelNotFoundError
+from instructlab.eval.exceptions import (
+    InvalidSDGPathError,
+    ModelNotFoundError,
+    SDGPathNotFoundError,
+)
 
 # Local
 from .logger_config import setup_logger
@@ -78,35 +83,87 @@ MMLU_TASKS = [
 ]
 
 
-def run_mmlu(
-    model_path, model_dtype, tasks, few_shots, batch_size, device, sdg_path=None
-) -> dict:
-    try:
-        model_args = f"pretrained={model_path},dtype={model_dtype}"
+class AbstractMMLUEvaluator(Evaluator):
+    """
+    Abstract child class of an Evaluator for Massive Multitask Language Understanding Branch
+
+    Attributes:
+        model_path      absolute path to or name of a huggingface model
+        sdg_path        path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
+        tasks           list of tasks for MMLU to test the model with
+        model_dtype     dtype of model when served
+        few_shots       number of examples
+        batch_size      number of GPUs
+        device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+    """
+
+    def __init__(
+        self,
+        model_path,
+        sdg_path: Optional[str],
+        tasks: list[str],
+        model_dtype="bfloat16",
+        few_shots: int = 2,
+        batch_size: int = 5,
+        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+    ) -> None:
+        self.model_path = model_path
+        self.sdg_path = sdg_path
+        self.tasks = tasks
+        self.model_dtype = model_dtype
+        self.few_shots = few_shots
+        self.batch_size = batch_size
+        self.device = device
+
+    def _run_mmlu(self) -> dict:
+        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
         tm = None
-        if sdg_path is not None:
-            tm = TaskManager(verbosity="DEBUG", include_path=sdg_path)
-        mmlu_output = simple_evaluate(
+        if self.sdg_path is not None:
+            if not os.path.exists(self.sdg_path):
+                raise SDGPathNotFoundError(self.sdg_path)
+            if not os.access(self.sdg_path, os.R_OK):
+                raise InvalidSDGPathError(self.sdg_path)
+            tm = TaskManager(verbosity="DEBUG", include_path=self.sdg_path)
+        mmlu_output = self._simple_evaluate_with_error_handling(
             model="hf",
             model_args=model_args,
-            tasks=tasks,
-            num_fewshot=few_shots,
-            batch_size=batch_size,
-            device=device,
+            tasks=self.tasks,
+            num_fewshot=self.few_shots,
+            batch_size=self.batch_size,
+            device=self.device,
             task_manager=tm,
         )
         results = mmlu_output["results"]
         return results
-    except OSError as ose:
-        # Having a better exception from lm_eval would be helpful
-        if "is not a valid model" in str(ose):
-            raise ModelNotFoundError(model_path) from ose
-        raise
+
+    # This method converts general errors from simple_evaluate
+    # into a more user-understandable error
+    def _simple_evaluate_with_error_handling(self, **kwargs):
+        try:
+            return simple_evaluate(**kwargs)
+        except KeyError as ke:
+            # If the first task key file cannot be found in sdg_path, simple_evaluate() will return
+            # an obscure KeyError(first task key)
+            if (
+                self.sdg_path is not None
+                and len(self.tasks) > 0
+                and ke.args[0] == self.tasks[0]
+            ):
+                raise InvalidSDGPathError(self.sdg_path) from ke
+            raise
+        except OSError as ose:
+            # If a model can not be found, simple_evaluate() will return
+            # an obscure OSError with a message
+            if "is not a valid model" in str(
+                ose
+            ) or "does not appear to have a file named" in str(ose):
+                raise ModelNotFoundError(self.model_path) from ose
+            raise
 
 
-class MMLUEvaluator(Evaluator):
+class MMLUEvaluator(AbstractMMLUEvaluator):
     """
-    Child class of an Evaluator for Massive Multitask Language Understanding (MMLU)
+    Evaluator for Massive Multitask Language Understanding (MMLU)
 
     Attributes:
         model_path   absolute path to or name of a huggingface model
@@ -122,19 +179,15 @@ class MMLUEvaluator(Evaluator):
     def __init__(
         self,
         model_path,
-        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
         tasks: list[str] = MMLU_TASKS,
         model_dtype="bfloat16",
         few_shots: int = 2,
         batch_size: int = 5,
+        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
-        super().__init__()
-        self.model_path = model_path
-        self.tasks = tasks
-        self.model_dtype = model_dtype
-        self.few_shots = few_shots
-        self.batch_size = batch_size
-        self.device = device
+        super().__init__(
+            model_path, None, tasks, model_dtype, few_shots, batch_size, device
+        )
 
     def run(self) -> tuple:
         """
@@ -151,14 +204,7 @@ class MMLUEvaluator(Evaluator):
         individual_scores: dict = {}
         agg_score: float = 0.0
 
-        results = run_mmlu(
-            self.model_path,
-            self.model_dtype,
-            self.tasks,
-            self.few_shots,
-            self.device,
-            self.batch_size,
-        )
+        results = self._run_mmlu()
 
         for task in self.tasks:
             mmlu_res = results[task]
@@ -171,38 +217,21 @@ class MMLUEvaluator(Evaluator):
         return overall_score, individual_scores
 
 
-class MMLUBranchEvaluator(Evaluator):
+class MMLUBranchEvaluator(AbstractMMLUEvaluator):
     """
-    Child class of an Evaluator for Massive Multitask Language Understanding Branch (MMLUBranch)
+    Evaluator for Massive Multitask Language Understanding Branch (MMLUBranch)
 
     Attributes:
-        model_path  absolute path to or name of a huggingface model
-        sdg_path    path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
-        tasks       group name that is shared by all the MMLUBranch tasks
-        few_shots   number of examples
-        batch_size  number of GPUs
-        device      PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        model_path      absolute path to or name of a huggingface model
+        sdg_path        path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
+        tasks           group name that is shared by all the MMLUBranch tasks
+        model_dtype     dtype of model when served
+        few_shots       number of examples
+        batch_size      number of GPUs
+        device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
     name = "mmlu_branch"
-
-    def __init__(
-        self,
-        model_path,
-        sdg_path: str,
-        tasks: list[str],
-        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
-        model_dtype="bfloat16",
-        few_shots: int = 2,
-        batch_size: int = 5,
-    ) -> None:
-        self.model_path = model_path
-        self.sdg_path = sdg_path
-        self.tasks = tasks
-        self.model_dtype = model_dtype
-        self.few_shots = few_shots
-        self.batch_size = batch_size
-        self.device = device
 
     def run(self) -> tuple:
         """
@@ -213,21 +242,14 @@ class MMLUBranchEvaluator(Evaluator):
             individual_scores   Individual MMLUBranch scores for each task in the task group
         """
         logger.debug(locals())
+
         # TODO: make this a parameter for class?
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
         individual_scores: dict = {}
         agg_score: float = 0.0
 
-        results = run_mmlu(
-            self.model_path,
-            self.model_dtype,
-            self.tasks,
-            self.few_shots,
-            self.batch_size,
-            self.device,
-            self.sdg_path,
-        )
+        results = self._run_mmlu()
 
         for task, result in results.items():
             if task in self.tasks:
