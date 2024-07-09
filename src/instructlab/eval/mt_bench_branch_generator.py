@@ -12,6 +12,7 @@ import shortuuid
 import yaml
 
 # Local
+from .exceptions import GitRepoNotFoundError, InvalidGitBranchError, InvalidGitRepoError
 from .logger_config import setup_logger
 from .mt_bench_common import bench_dir
 
@@ -119,6 +120,12 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
             for entry in reference_answers:
                 json.dump(entry, outfile)
                 outfile.write("\n")
+    except git.exc.NoSuchPathError as nspe:
+        raise GitRepoNotFoundError(taxonomy_dir) from nspe
+    except git.exc.GitCommandError as gce:
+        raise InvalidGitBranchError(branch) from gce
+    except (git.exc.InvalidGitRepositoryError, git.exc.GitError) as ge:
+        raise InvalidGitRepoError(taxonomy_dir) from ge
     finally:
         if restore_branch is not None:
             taxonomy_repo.git.checkout(restore_branch)
