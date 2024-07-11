@@ -9,7 +9,7 @@ class EvalError(Exception):
 
 class ModelNotFoundError(EvalError):
     """
-    Exception raised when model is not able to be found
+    Error raised when model is not able to be found
 
     Attributes
         message     error message to be printed on raise
@@ -18,12 +18,13 @@ class ModelNotFoundError(EvalError):
 
     def __init__(self, path) -> None:
         super().__init__()
+        self.path = path
         self.message = f"Model could not be found at {path}"
 
 
 class InvalidGitRepoError(EvalError):
     """
-    Exception raised when taxonomy dir provided isn't a valid git repo
+    Error raised when taxonomy dir provided isn't a valid git repo
     Attributes
         message         error message to be printed on raise
         taxonomy_dir    supplied taxonomy directory
@@ -31,12 +32,13 @@ class InvalidGitRepoError(EvalError):
 
     def __init__(self, taxonomy_dir) -> None:
         super().__init__()
+        self.taxonomy_dir = taxonomy_dir
         self.message = f"Invalid git repo: {taxonomy_dir}"
 
 
 class GitRepoNotFoundError(EvalError):
     """
-    Exception raised when taxonomy dir provided does not exist
+    Error raised when taxonomy dir provided does not exist
     Attributes
         message         error message to be printed on raise
         taxonomy_dir    supplied taxonomy directory
@@ -44,12 +46,13 @@ class GitRepoNotFoundError(EvalError):
 
     def __init__(self, taxonomy_dir) -> None:
         super().__init__()
+        self.taxonomy_dir = taxonomy_dir
         self.message = f"Taxonomy git repo not found: {taxonomy_dir}"
 
 
 class InvalidGitBranchError(EvalError):
     """
-    Exception raised when branch provided is invalid
+    Error raised when branch provided is invalid
     Attributes
         message         error message to be printed on raise
         branch          supplied branch
@@ -57,4 +60,33 @@ class InvalidGitBranchError(EvalError):
 
     def __init__(self, branch) -> None:
         super().__init__()
+        self.branch = branch
         self.message = f"Invalid git branch: {branch}"
+
+
+class SDGPathNotFoundError(EvalError):
+    """
+    Error raised when the sdg path doesn't exist
+    Attributes
+        message         error message to be printed on raise
+        sdg_path        sdg path
+    """
+
+    def __init__(self, sdg_path) -> None:
+        super().__init__()
+        self.sdg_path = sdg_path
+        self.message = f"SDG Path not found: {sdg_path}"
+
+
+class InvalidSDGPathError(EvalError):
+    """
+    Error raised when the sdg path is invalid
+    Attributes
+        message         error message to be printed on raise
+        sdg_path        sdg path
+    """
+
+    def __init__(self, sdg_path) -> None:
+        super().__init__()
+        self.sdg_path = sdg_path
+        self.message = f"Invalid SDG Path: {sdg_path}"
