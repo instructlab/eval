@@ -10,12 +10,12 @@ Python Library for Evaluation
 ## MT-Bench / MT-Bench-Branch Testing Steps
 
 ```shell
-# Optional: Use cloud-instance.sh to launch and setup the instance
-./cloud-instance.sh ec2 launch -t g5.4xlarge
-./cloud-instance.sh ec2 setup-rh-devenv
-./cloud-instance.sh ec2 install-rh-nvidia-drivers
-./cloud-instance.sh ec2 ssh sudo reboot
-./cloud-instance.sh ec2 ssh
+# Optional: Use cloud-instance.sh (https://github.com/instructlab/instructlab/tree/main/scripts/infra) to launch and setup the instance
+scripts/infra/cloud-instance.sh ec2 launch -t g5.4xlarge
+scripts/infra/cloud-instance.sh ec2 setup-rh-devenv
+scripts/infra/cloud-instance.sh ec2 install-rh-nvidia-drivers
+scripts/infra/cloud-instance.sh ec2 ssh sudo reboot
+scripts/infra/cloud-instance.sh ec2 ssh
 
 
 # Regardless of how you setup your instance
@@ -33,6 +33,7 @@ python -m vllm.entrypoints.openai.api_server --model instructlab/granite-7b-lab 
 In another shell window
 
 ```shell
+export INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=10 # Optional if you want to shorten run times
 python3 tests/test_gen_answers.py
 python3 tests/test_branch_gen_answers.py
 ```
@@ -65,7 +66,6 @@ eval_output/
 ```
 
 ```shell
-export INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=40 # Optional if you want to shorten run times
 python3 tests/test_judge_answers.py
 python3 tests/test_branch_judge_answers.py
 ```

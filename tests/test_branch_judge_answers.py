@@ -10,7 +10,8 @@ mt_bench_branch = MTBenchBranchEvaluator(
     "../taxonomy",
     "main",
 )
-qa_pairs = mt_bench_branch.judge_answers("http://localhost:8000/v1")
+qa_pairs, error_rate = mt_bench_branch.judge_answers("http://localhost:8000/v1")
+print(f"Error Rate: {error_rate}")
 print(f"QA Pair 0:")
 pprint.pprint(qa_pairs[0])
 
