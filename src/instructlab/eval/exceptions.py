@@ -64,29 +64,29 @@ class InvalidGitBranchError(EvalError):
         self.message = f"Invalid git branch: {branch}"
 
 
-class SDGPathNotFoundError(EvalError):
+class TasksDirNotFoundError(EvalError):
     """
-    Error raised when the sdg path doesn't exist
+    Error raised when the tasks dir doesn't exist
     Attributes
         message         error message to be printed on raise
-        sdg_path        sdg path
+        tasks_dir       tasks dir
     """
 
-    def __init__(self, sdg_path) -> None:
+    def __init__(self, tasks_dir) -> None:
         super().__init__()
-        self.sdg_path = sdg_path
-        self.message = f"SDG Path not found: {sdg_path}"
+        self.tasks_dir = tasks_dir
+        self.message = f"Tasks dir not found: {tasks_dir}"
 
 
-class InvalidSDGPathError(EvalError):
+class InvalidTasksDirError(EvalError):
     """
-    Error raised when the sdg path is invalid
+    Error raised when the tasks dir is invalid
     Attributes
         message         error message to be printed on raise
-        sdg_path        sdg path
+        tasks_dir       tasks dir
     """
 
-    def __init__(self, sdg_path) -> None:
+    def __init__(self, tasks_dir) -> None:
         super().__init__()
-        self.sdg_path = sdg_path
-        self.message = f"Invalid SDG Path: {sdg_path}"
+        self.tasks_dir = tasks_dir
+        self.message = f"Invalid Tasks Dir: {tasks_dir}"
