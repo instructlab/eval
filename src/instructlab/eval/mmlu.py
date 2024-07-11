@@ -79,7 +79,7 @@ MMLU_TASKS = [
 
 
 def run_mmlu(
-    model_path, model_dtype, tasks, few_shots, batch_size, sdg_path=None
+    model_path, model_dtype, tasks, few_shots, batch_size, device, sdg_path=None
 ) -> dict:
     try:
         model_args = f"pretrained={model_path},dtype={model_dtype}"
@@ -92,7 +92,7 @@ def run_mmlu(
             tasks=tasks,
             num_fewshot=few_shots,
             batch_size=batch_size,
-            device=("cuda" if torch.cuda.is_available() else "cpu"),
+            device=device,
             task_manager=tm,
         )
         results = mmlu_output["results"]
@@ -114,6 +114,7 @@ class MMLUEvaluator(Evaluator):
         model_dtype  dtype of model when served
         few_shots    number of examples
         batch_size   number of GPUs
+        device       PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
     name = "mmlu"
@@ -121,6 +122,7 @@ class MMLUEvaluator(Evaluator):
     def __init__(
         self,
         model_path,
+        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
         tasks: list[str] = MMLU_TASKS,
         model_dtype="bfloat16",
         few_shots: int = 2,
@@ -132,6 +134,7 @@ class MMLUEvaluator(Evaluator):
         self.model_dtype = model_dtype
         self.few_shots = few_shots
         self.batch_size = batch_size
+        self.device = device
 
     def run(self) -> tuple:
         """
@@ -153,6 +156,7 @@ class MMLUEvaluator(Evaluator):
             self.model_dtype,
             self.tasks,
             self.few_shots,
+            self.device,
             self.batch_size,
         )
 
@@ -177,6 +181,7 @@ class MMLUBranchEvaluator(Evaluator):
         tasks       group name that is shared by all the MMLUBranch tasks
         few_shots   number of examples
         batch_size  number of GPUs
+        device      PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
     name = "mmlu_branch"
@@ -186,6 +191,7 @@ class MMLUBranchEvaluator(Evaluator):
         model_path,
         sdg_path: str,
         tasks: list[str],
+        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
         model_dtype="bfloat16",
         few_shots: int = 2,
         batch_size: int = 5,
@@ -196,6 +202,7 @@ class MMLUBranchEvaluator(Evaluator):
         self.model_dtype = model_dtype
         self.few_shots = few_shots
         self.batch_size = batch_size
+        self.device = device
 
     def run(self) -> tuple:
         """
@@ -218,6 +225,7 @@ class MMLUBranchEvaluator(Evaluator):
             self.tasks,
             self.few_shots,
             self.batch_size,
+            self.device,
             self.sdg_path,
         )
 
