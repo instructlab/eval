@@ -12,9 +12,9 @@ import torch
 # First Party
 from instructlab.eval.evaluator import Evaluator
 from instructlab.eval.exceptions import (
-    InvalidSDGPathError,
+    InvalidTasksDirError,
     ModelNotFoundError,
-    SDGPathNotFoundError,
+    TasksDirNotFoundError,
 )
 
 # Local
@@ -89,7 +89,7 @@ class AbstractMMLUEvaluator(Evaluator):
 
     Attributes:
         model_path      absolute path to or name of a huggingface model
-        sdg_path        path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
+        tasks_dir       path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
         tasks           list of tasks for MMLU to test the model with
         model_dtype     dtype of model when served
         few_shots       number of examples
@@ -100,7 +100,7 @@ class AbstractMMLUEvaluator(Evaluator):
     def __init__(
         self,
         model_path,
-        sdg_path: Optional[str],
+        tasks_dir: Optional[str],
         tasks: list[str],
         model_dtype="bfloat16",
         few_shots: int = 2,
@@ -108,7 +108,7 @@ class AbstractMMLUEvaluator(Evaluator):
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
         self.model_path = model_path
-        self.sdg_path = sdg_path
+        self.tasks_dir = tasks_dir
         self.tasks = tasks
         self.model_dtype = model_dtype
         self.few_shots = few_shots
@@ -118,12 +118,12 @@ class AbstractMMLUEvaluator(Evaluator):
     def _run_mmlu(self) -> dict:
         model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
         tm = None
-        if self.sdg_path is not None:
-            if not os.path.exists(self.sdg_path):
-                raise SDGPathNotFoundError(self.sdg_path)
-            if not os.access(self.sdg_path, os.R_OK):
-                raise InvalidSDGPathError(self.sdg_path)
-            tm = TaskManager(verbosity="DEBUG", include_path=self.sdg_path)
+        if self.tasks_dir is not None:
+            if not os.path.exists(self.tasks_dir):
+                raise TasksDirNotFoundError(self.tasks_dir)
+            if not os.access(self.tasks_dir, os.R_OK):
+                raise InvalidTasksDirError(self.tasks_dir)
+            tm = TaskManager(verbosity="DEBUG", include_path=self.tasks_dir)
         mmlu_output = self._simple_evaluate_with_error_handling(
             model="hf",
             model_args=model_args,
@@ -142,14 +142,14 @@ class AbstractMMLUEvaluator(Evaluator):
         try:
             return simple_evaluate(**kwargs)
         except KeyError as ke:
-            # If the first task key file cannot be found in sdg_path, simple_evaluate() will return
+            # If the first task key file cannot be found in tasks_dir, simple_evaluate() will return
             # an obscure KeyError(first task key)
             if (
-                self.sdg_path is not None
+                self.tasks_dir is not None
                 and len(self.tasks) > 0
                 and ke.args[0] == self.tasks[0]
             ):
-                raise InvalidSDGPathError(self.sdg_path) from ke
+                raise InvalidTasksDirError(self.tasks_dir) from ke
             raise
         except OSError as ose:
             # If a model can not be found, simple_evaluate() will return
@@ -223,7 +223,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
 
     Attributes:
         model_path      absolute path to or name of a huggingface model
-        sdg_path        path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
+        tasks_dir       path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
         tasks           group name that is shared by all the MMLUBranch tasks
         model_dtype     dtype of model when served
         few_shots       number of examples
