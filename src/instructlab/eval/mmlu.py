@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 # Standard
-from typing import Optional
+from typing import Optional, Union
 import os
 
 # Third Party
@@ -93,7 +93,7 @@ class AbstractMMLUEvaluator(Evaluator):
         tasks           list of tasks for MMLU to test the model with
         model_dtype     dtype of model when served
         few_shots       number of examples
-        batch_size      number of GPUs
+        batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
@@ -104,7 +104,7 @@ class AbstractMMLUEvaluator(Evaluator):
         tasks: list[str],
         model_dtype="bfloat16",
         few_shots: int = 2,
-        batch_size: int = 5,
+        batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
         self.model_path = model_path
@@ -170,7 +170,7 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         tasks        list of tasks for MMLU to test the model with
         model_dtype  dtype of model when served
         few_shots    number of examples
-        batch_size   number of GPUs
+        batch_size   batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device       PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
@@ -182,7 +182,7 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         tasks: list[str] = MMLU_TASKS,
         model_dtype="bfloat16",
         few_shots: int = 2,
-        batch_size: int = 5,
+        batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
         super().__init__(
@@ -227,7 +227,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
         tasks           group name that is shared by all the MMLUBranch tasks
         model_dtype     dtype of model when served
         few_shots       number of examples
-        batch_size      number of GPUs
+        batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
     """
 
