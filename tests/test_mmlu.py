@@ -3,7 +3,6 @@ from instructlab.eval.mmlu import MMLUEvaluator
 
 
 def test_minimal_mmlu():
-    print("===> Executing 'test_minimal_mmlu'...")
     try:
         model_path = "instructlab/granite-7b-lab"
         tasks = ["mmlu_anatomy", "mmlu_astronomy"]
@@ -13,9 +12,5 @@ def test_minimal_mmlu():
         print(individual_scores)
     except Exception as exc:
         print(f"'test_minimal_mmlu' failed: {exc}")
-        return False
-    return True
-
-
-if __name__ == "__main__":
-    assert test_minimal_mmlu() == True
+    assert overall_score is not None
+    assert individual_scores is not None
