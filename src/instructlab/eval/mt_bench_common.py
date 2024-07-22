@@ -273,6 +273,8 @@ def chat_completion_openai(
             output = response.choices[0].message.content
             break
         except openai.OpenAIError as e:
+            if isinstance(e, openai.APIConnectionError):
+                raise e
             if i == API_MAX_RETRY - 1:
                 # Print error on last try
                 print(type(e), e)
