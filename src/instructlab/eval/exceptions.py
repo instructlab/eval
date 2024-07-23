@@ -22,6 +22,23 @@ class ModelNotFoundError(EvalError):
         self.message = f"Model could not be found at {path}"
 
 
+class InvalidModelError(EvalError):
+    """
+    Error raised when model can be found but is invalid
+
+    Attributes
+        message     error message to be printed on raise
+        path        filepath of model location
+        reason      root cause for model invalidity
+    """
+
+    def __init__(self, path, reason) -> None:
+        super().__init__()
+        self.path = path
+        self.reason = reason
+        self.message = f"Model found at {path} but was invalid due to: {reason}"
+
+
 class InvalidGitRepoError(EvalError):
     """
     Error raised when taxonomy dir provided isn't a valid git repo
