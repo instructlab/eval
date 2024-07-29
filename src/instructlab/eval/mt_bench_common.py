@@ -274,8 +274,8 @@ def chat_completion_openai(
             if i == API_MAX_RETRY - 1:
                 # Print error on last try
                 print(type(e), e)
-            else:
-                logger.debug(e)
+                break
+            logger.debug(e)
             time.sleep(API_RETRY_SLEEP)
 
     return API_ERROR_OUTPUT
