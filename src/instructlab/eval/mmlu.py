@@ -12,6 +12,7 @@ import torch
 # First Party
 from instructlab.eval.evaluator import Evaluator
 from instructlab.eval.exceptions import (
+    InvalidModelError,
     InvalidTasksDirError,
     ModelNotFoundError,
     TasksDirNotFoundError,
@@ -158,6 +159,9 @@ class AbstractMMLUEvaluator(Evaluator):
                 ose
             ) or "does not appear to have a file named" in str(ose):
                 raise ModelNotFoundError(self.model_path) from ose
+            if "is not a valid JSON file" in str(ose):
+                reason = "Looked for valid JSON file but couldn't find one - are you pointing at a directory with a 'config.json'?"
+                raise InvalidModelError(self.model_path, reason) from ose
             raise
 
 
