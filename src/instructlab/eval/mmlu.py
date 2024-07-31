@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 
+"""
+MMLU - Massive Multitask Language Understanding
+https://en.wikipedia.org/wiki/MMLU
+https://arxiv.org/abs/2009.03300
+"""
+
 # Standard
 from typing import Optional, Union
 import os
