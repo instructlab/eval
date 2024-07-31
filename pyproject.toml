@@ -96,3 +96,6 @@ from-first = true
 # import-heading-firstparty=First Party
 # import-heading-localfolder=Local
 known-local-folder = ["tuning"]
+
+[tool.mypy]
+ignore_missing_imports = true
