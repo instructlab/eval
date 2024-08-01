@@ -56,8 +56,9 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
                 print(f"failed to load {qna_file}. skipping...")
                 continue
             for ex in examples:
-                q, a = ex["question"], ex["answer"]
+                q, a = ex.get("question"), ex.get("answer")
                 if q is None or a is None:
+                    logger.warning("Skipping malformed file %s", qna_file)
                     continue
 
                 c = ex["question"] if "context" in ex else None
