@@ -1,5 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 # Standard
+from pathlib import Path
 import hashlib
 import json
 import os
@@ -22,10 +23,20 @@ logger = setup_logger(__name__)
 def get_file_paths(directory):
     logger.debug(locals())
     file_paths = []
-    for root, _, files in os.walk(directory):
-        for file in files:
-            if file.split("/")[-1] == "qna.yaml":
-                file_paths.append(os.path.join(root, file))
+    root_paths = [
+        entry
+        for entry in Path(directory).iterdir()
+        if entry.is_dir()
+        if not entry.name.startswith(".")
+        if entry.name != "knowledge"
+        if entry.name != "docs"
+        if entry.name != "scripts"
+    ]
+    for basedir in root_paths:
+        for root, _, files in os.walk(basedir):
+            file_paths.extend(
+                [os.path.join(root, file) for file in files if file == "qna.yaml"]
+            )
     return file_paths
 
 
