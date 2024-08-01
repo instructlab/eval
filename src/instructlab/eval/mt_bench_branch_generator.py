@@ -60,7 +60,7 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
                 if q is None or a is None:
                     continue
 
-                c = ex["question"] if "context" in ex else None
+                c = ex.get("context")
                 if c is not None:
                     t_1 = (
                         "Given the context below:\n"
