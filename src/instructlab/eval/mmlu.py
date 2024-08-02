@@ -110,7 +110,7 @@ class AbstractMMLUEvaluator(Evaluator):
         tasks_dir: Optional[str],
         tasks: list[str],
         model_dtype="bfloat16",
-        few_shots: int = 2,
+        few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
@@ -191,7 +191,7 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         model_path,
         tasks: list[str] = MMLU_TASKS,
         model_dtype="bfloat16",
-        few_shots: int = 2,
+        few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
     ) -> None:
