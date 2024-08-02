@@ -21,7 +21,7 @@ scripts/infra/cloud-instance.sh ec2 ssh
 # Regardless of how you setup your instance
 git clone https://github.com/instructlab/taxonomy.git && pushd taxonomy && git branch rc && popd
 git clone --bare https://github.com/instructlab/eval.git && git clone eval.git/ && cd eval && git remote add syncrepo ../eval.git
-python -m venv venv
+python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 pip install -r requirements-dev.txt

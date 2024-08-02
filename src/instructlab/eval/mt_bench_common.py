@@ -4,7 +4,7 @@ Common data structures and utilities.
 """
 
 # Standard
-from typing import Optional
+from typing import Optional, TypedDict
 import ast
 import dataclasses
 import glob
@@ -14,8 +14,12 @@ import re
 import time
 
 # Third Party
+from fastchat import conversation
 from fastchat.model.model_adapter import get_conversation_template  # type: ignore
 import openai
+
+# First Party
+from instructlab.eval import exceptions
 
 # Local
 from .logger_config import setup_logger
@@ -247,22 +251,48 @@ def play_a_match_single(
     return result
 
 
+def _is_fatal_openai_error(e: openai.OpenAIError) -> bool:
+    return isinstance(e, openai.APIConnectionError)
+
+
+# TODO: copied from instructlab (cli) utils module; consolidate somewhere?
+class Message(TypedDict):
+    """
+    Represents a message within an AI conversation.
+    """
+
+    content: str
+    # one of: "user", "assistant", or "system"
+    role: str
+
+
+def _get_messages(
+    conv: conversation.Conversation, merge_system_user_message: bool
+) -> list[Message]:
+    messages = conv.to_openai_api_messages()
+    if (
+        merge_system_user_message
+        and messages[0]["role"] == "system"
+        and messages[1]["role"] == "user"
+    ):
+        messages[1]["content"] = messages[0]["content"] + "\n" + messages[1]["content"]
+        return messages[1:]
+    return messages
+
+
 def chat_completion_openai(
-    openai_client, model, conv, temperature, max_tokens, merge_system_user_message=False
+    openai_client,
+    model,
+    conv: conversation.Conversation,
+    temperature,
+    max_tokens,
+    merge_system_user_message: bool = False,
 ) -> str:
-    output = API_ERROR_OUTPUT
+    output = None
+    messages = _get_messages(conv, merge_system_user_message)
+
     for i in range(API_MAX_RETRY):
         try:
-            messages = conv.to_openai_api_messages()
-            if (
-                merge_system_user_message
-                and messages[0]["role"] == "system"
-                and messages[1]["role"] == "user"
-            ):
-                messages[1]["content"] = (
-                    messages[0]["content"] + "\n" + messages[1]["content"]
-                )
-                messages = messages[1:]
             response = openai_client.chat.completions.create(
                 model=model,
                 messages=messages,
@@ -272,14 +302,38 @@ def chat_completion_openai(
             )
             output = response.choices[0].message.content
             break
-        except openai.OpenAIError as e:
+        except (
+            # retry may help with these errors
+            openai.APIConnectionError,
+            openai.RateLimitError,  # 429
+            openai.InternalServerError,  # >=500
+            # NOTE: Errors listed below may need a revisit: we are not sure if
+            # it's ever helpful to retry them. Leaving them intact for now.
+            openai.AuthenticationError,  # 401
+            openai.PermissionDeniedError,  # 403
+            openai.NotFoundError,  # 404
+        ) as e:
+            if not _is_fatal_openai_error(e):
+                output = API_ERROR_OUTPUT  # disable hard fail (never raise!)
+            # still, retry in the hope we'll get a successful reply
             if i == API_MAX_RETRY - 1:
                 # Print error on last try
                 print(type(e), e)
             else:
                 logger.debug(e)
             time.sleep(API_RETRY_SLEEP)
+        except (
+            # retry won't fix these errors
+            openai.BadRequestError,  # 400
+            openai.UnprocessableEntityError,  # 422
+        ) as e:
+            logger.debug(e)
+            return API_ERROR_OUTPUT  # immediately soft fail
 
+    if output is None:
+        # not a single attempt was non-fatal; this is indicative of
+        # basic connectivity or server issue -> hard fail
+        raise exceptions.OpenAIError
     return output
 
 
