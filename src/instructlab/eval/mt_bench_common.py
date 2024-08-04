@@ -250,7 +250,6 @@ def play_a_match_single(
 def chat_completion_openai(
     openai_client, model, conv, temperature, max_tokens, merge_system_user_message=False
 ) -> str:
-    output = API_ERROR_OUTPUT
     for i in range(API_MAX_RETRY):
         try:
             messages = conv.to_openai_api_messages()
@@ -270,17 +269,16 @@ def chat_completion_openai(
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            output = response.choices[0].message.content
-            break
+            return response.choices[0].message.content
         except openai.OpenAIError as e:
             if i == API_MAX_RETRY - 1:
                 # Print error on last try
                 print(type(e), e)
-            else:
-                logger.debug(e)
+                break
+            logger.debug(e)
             time.sleep(API_RETRY_SLEEP)
 
-    return output
+    return API_ERROR_OUTPUT
 
 
 def check_data(questions, model_answers, ref_answers, models, judges):
