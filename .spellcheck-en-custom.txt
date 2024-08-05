@@ -2,13 +2,17 @@
 # make spellcheck-sort
 # Please keep this file sorted:
 # SPDX-License-Identifier: Apache-2.0
-Tatsu
-TODO
+Backport
+backported
+codebase
 eval
 gpt
+hoc
 instructlab
 jsonl
 justfile
 openai
+Tatsu
+TODO
 venv
 vllm
