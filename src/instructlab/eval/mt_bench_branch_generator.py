@@ -64,7 +64,7 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
             examples = read_qna(qna_file_path)
             qna_file = qna_file_path[len(taxonomy_dir) + 1 :]
             if examples is None:
-                print(f"failed to load {qna_file}. skipping...")
+                logger.warning("failed to load %s. skipping...", qna_file)
                 continue
             for ex in examples:
                 q, a = ex.get("question"), ex.get("answer")
