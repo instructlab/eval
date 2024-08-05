@@ -40,6 +40,9 @@ jobs:
           fetch-depth: 0
           submodules: true
 
+      - name: Free disk space
+        uses: ./.github/actions/free-disk-space
+
       - name: Setup Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -48,19 +51,23 @@ jobs:
           cache-dependency-path: |
             **/pyproject.toml
             **/requirements*.txt
+
       - name: Install dependencies
         id: deps
         run: |
           python -m pip install --upgrade pip
           python -m pip install tox
+
       - name: Run Ruff check
         run: |
           tox -e ruff -- check
+
       - name: Run linting
         if: ${{ !cancelled() && (steps.deps.outcome == 'success') }}
         run: |
           echo "::add-matcher::.github/workflows/matchers/pylint.json"
           tox -e lint
+
       - name: Run mypy type checks
         if: ${{ !cancelled() && (steps.deps.outcome == 'success') }}
         run: |
