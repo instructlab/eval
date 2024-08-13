@@ -13,8 +13,6 @@ import re
 import time
 
 # Third Party
-from fastchat import conversation
-from fastchat.model.model_adapter import get_conversation_template  # type: ignore
 import openai
 
 # First Party
@@ -22,6 +20,8 @@ from instructlab.eval import exceptions
 
 # Local
 from .logger_config import setup_logger
+from .mt_bench_conversation import Conversation
+from .mt_bench_model_adapter import get_conversation_template
 
 logger = setup_logger(__name__)
 
@@ -158,7 +158,7 @@ def run_judge_single(
     rating = -1
 
     system_prompt = judge.prompt_template["system_prompt"]
-    conv = get_conversation_template(model)
+    conv = get_conversation_template(model, "mixtral")
     conv.set_system_message(system_prompt)
     conv.append_message(conv.roles[0], user_prompt)
     conv.append_message(conv.roles[1], None)
@@ -268,9 +268,7 @@ class Message(TypedDict):
     role: str
 
 
-def _get_messages(
-    conv: conversation.Conversation, merge_system_user_message: bool
-) -> list[Message]:
+def _get_messages(conv: Conversation, merge_system_user_message: bool) -> list[Message]:
     messages = conv.to_openai_api_messages()
     if (
         (merge_system_user_message or conv.name == "mistral")
@@ -285,7 +283,7 @@ def _get_messages(
 def chat_completion_openai(
     openai_client,
     model,
-    conv: conversation.Conversation,
+    conv: Conversation,
     temperature,
     max_tokens,
     merge_system_user_message: bool = False,
