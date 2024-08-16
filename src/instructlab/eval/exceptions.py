@@ -109,13 +109,13 @@ class InvalidTasksDirError(EvalError):
         self.message = f"Invalid Tasks Dir: {tasks_dir}"
 
 
-class OpenAIError(EvalError):
+class ModelServingAPIError(EvalError):
     """
-    Error raised when reply retrieval from OpenAI API fails.
+    Error raised when reply retrieval from model serving fails.
     Attributes
         message              error message to be printed on raise
     """
 
     def __init__(self) -> None:
         super().__init__()
-        self.message = "Failed to receive a reply from API."
+        self.message = "Failed to receive a reply from model serving API."

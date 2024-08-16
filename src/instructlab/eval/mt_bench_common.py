@@ -252,7 +252,15 @@ def play_a_match_single(
 
 
 def _is_fatal_openai_error(e: openai.OpenAIError) -> bool:
-    return isinstance(e, openai.APIConnectionError)
+    return isinstance(
+        e,
+        (
+            openai.APIConnectionError,
+            openai.AuthenticationError,
+            openai.PermissionDeniedError,
+            openai.NotFoundError,
+        ),
+    )
 
 
 # TODO: copied from instructlab (cli) utils module; consolidate somewhere?
@@ -303,6 +311,13 @@ def chat_completion_openai(
             output = response.choices[0].message.content
             break
         except (
+            # retry won't fix these errors
+            openai.BadRequestError,  # 400
+            openai.UnprocessableEntityError,  # 422
+        ) as e:
+            logger.debug(e)
+            return API_ERROR_OUTPUT  # immediately soft fail
+        except (
             # retry may help with these errors
             openai.APIConnectionError,
             openai.RateLimitError,  # 429
@@ -312,6 +327,8 @@ def chat_completion_openai(
             openai.AuthenticationError,  # 401
             openai.PermissionDeniedError,  # 403
             openai.NotFoundError,  # 404
+            # General catch-all
+            openai.OpenAIError,
         ) as e:
             if not _is_fatal_openai_error(e):
                 output = API_ERROR_OUTPUT  # disable hard fail (never raise!)
@@ -321,18 +338,11 @@ def chat_completion_openai(
                 break
             logger.debug(e)
             time.sleep(API_RETRY_SLEEP)
-        except (
-            # retry won't fix these errors
-            openai.BadRequestError,  # 400
-            openai.UnprocessableEntityError,  # 422
-        ) as e:
-            logger.debug(e)
-            return API_ERROR_OUTPUT  # immediately soft fail
 
     if output is None:
         # not a single attempt was non-fatal; this is indicative of
         # basic connectivity or server issue -> hard fail
-        raise exceptions.OpenAIError
+        raise exceptions.ModelServingAPIError
     return output
 
 
