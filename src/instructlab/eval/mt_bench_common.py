@@ -254,7 +254,7 @@ def chat_completion_openai(
         try:
             messages = conv.to_openai_api_messages()
             if (
-                merge_system_user_message
+                (merge_system_user_message or conv.name == "mistral")
                 and messages[0]["role"] == "system"
                 and messages[1]["role"] == "user"
             ):
