@@ -39,6 +39,21 @@ class InvalidModelError(EvalError):
         self.message = f"Model found at {path} but was invalid due to: {reason}"
 
 
+class InvalidMaxWorkersError(EvalError):
+    """
+    Error raised when max_workers isn't an int or "auto"
+
+    Attributes
+        message         error message to be printed on raise
+        max_workers     max_workers specified
+    """
+
+    def __init__(self, max_workers) -> None:
+        super().__init__()
+        self.max_workers = max_workers
+        self.message = f"Invalid max_workers '{max_workers}' specified. Valid values are positive integers or 'auto'."
+
+
 class InvalidGitRepoError(EvalError):
     """
     Error raised when taxonomy dir provided isn't a valid git repo
