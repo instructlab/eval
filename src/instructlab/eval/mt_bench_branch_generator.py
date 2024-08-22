@@ -112,16 +112,16 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
 
         output_base_dir = bench_dir(output_dir, "mt_bench_branch", branch)
         os.makedirs(output_base_dir, exist_ok=True)
-        question_fn = "question.jsonl"
-        question_file = os.path.join(output_base_dir, question_fn)
+        question_file = os.path.join(output_base_dir, "question.jsonl")
         logger.debug("Generating question file: %s", question_file)
         with open(question_file, "w", encoding="utf-8") as outfile:
             for entry in question_lst:
                 json.dump(entry, outfile)
                 outfile.write("\n")
 
-        answer_file_dir = os.path.join(output_base_dir, "reference_answer")
-        answer_file = os.path.join(answer_file_dir, f"{judge_model_name}.jsonl")
+        answer_file = os.path.join(
+            output_base_dir, "reference_answer", f"{judge_model_name}.jsonl"
+        )
         logger.debug("Generating answer file: %s", answer_file)
         os.makedirs(os.path.dirname(answer_file), exist_ok=True)
         with open(

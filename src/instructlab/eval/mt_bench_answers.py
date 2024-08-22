@@ -119,10 +119,10 @@ def generate_answers(
     data_base_dir = bench_dir(data_dir, bench_name, branch)
     output_base_dir = bench_dir(output_dir, bench_name, branch)
 
-    question_file = f"{data_base_dir}/question.jsonl"
+    question_file = os.path.join(data_base_dir, "question.jsonl")
     questions = load_questions(question_file, question_begin, question_end)
 
-    answer_file = f"{output_base_dir}/model_answer/{model_name}.jsonl"
+    answer_file = os.path.join(output_base_dir, "model_answer", f"{model_name}.jsonl")
     if os.path.isfile(answer_file):
         os.remove(answer_file)
         logger.debug("Removing previous answer file: %s", answer_file)

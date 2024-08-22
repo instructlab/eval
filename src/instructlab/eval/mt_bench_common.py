@@ -71,7 +71,7 @@ class MatchSingle:
 
 
 def bench_dir(output_dir, bench_name, branch) -> str:
-    b_dir = f"{output_dir}/{bench_name}"
+    b_dir = os.path.join(output_dir, bench_name)
     if branch is not None:
         b_dir = os.path.join(b_dir, branch)
     return b_dir
@@ -283,7 +283,7 @@ def _get_messages(
         and messages[0]["role"] == "system"
         and messages[1]["role"] == "user"
     ):
-        messages[1]["content"] = messages[0]["content"] + "\n" + messages[1]["content"]
+        messages[1]["content"] = f"{messages[0]['content']}\n{messages[1]['content']}"
         return messages[1:]
     return messages
 

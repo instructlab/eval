@@ -169,12 +169,12 @@ def judge_model(
     data_base_dir = bench_dir(data_dir, bench_name, branch)
     output_base_dir = bench_dir(output_dir, bench_name, branch)
 
-    judge_file = f"{package_data_dir}/{bench_name}/judge_prompts.jsonl"
+    judge_file = os.path.join(package_data_dir, bench_name, "judge_prompts.jsonl")
 
-    question_file = f"{data_base_dir}/question.jsonl"
-    answer_file = f"{output_base_dir}/model_answer/{model_name}.jsonl"
+    question_file = os.path.join(data_base_dir, "question.jsonl")
+    answer_file = os.path.join(output_base_dir, "model_answer", f"{model_name}.jsonl")
     answer_dir = os.path.dirname(answer_file)
-    ref_answer_dir = f"{data_base_dir}/reference_answer"
+    ref_answer_dir = os.path.join(data_base_dir, "reference_answer")
 
     # Load questions
     questions = load_questions(question_file, None, None)
@@ -195,7 +195,9 @@ def judge_model(
         models = model_list
 
     judges = make_judge_single(judge_model_name, judge_prompts)
-    output_file = f"{output_base_dir}/model_judgment/{judge_model_name}_single.jsonl"
+    output_file = os.path.join(
+        output_base_dir, "model_judgment", f"{judge_model_name}_single.jsonl"
+    )
     if os.path.isfile(output_file):
         os.remove(output_file)
         logger.debug("Removing previous judgment file: %s", output_file)
