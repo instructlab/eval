@@ -7,7 +7,6 @@ Common data structures and utilities.
 from typing import Optional
 import ast
 import dataclasses
-import glob
 import json
 import os
 import re
@@ -84,7 +83,7 @@ def load_questions(question_file: str, begin: Optional[int], end: Optional[int])
     return questions
 
 
-def load_model_answers(answer_dir: str, model_name=None) -> dict:
+def load_model_answers(answer_dir: str, model_name=None, answer_file=None) -> dict:
     """Load model answers.
 
     The return value is a python dict of type:
@@ -92,22 +91,34 @@ def load_model_answers(answer_dir: str, model_name=None) -> dict:
     """
     logger.debug(locals())
     model_answers = {}
-    for root, _, files in os.walk(answer_dir):
-        for filename in files:
-            if filename.endswith(".jsonl"):
-                # Removing ".jsonl"
-                file_model_name = filename[:-6]
-                answer = {}
-                file_path = os.path.join(root, filename)
-                with open(file_path, encoding="utf-8") as fin:
-                    for line in fin:
-                        l = json.loads(line)
-                        answer[l["question_id"]] = l
-                model_answers[model_name or file_model_name] = answer
-                if model_name == file_model_name:
-                    logger.debug("Found answer file matching: %s", model_name)
-                    break
+    if answer_file is not None:
+        filename = os.path.basename(answer_file)
+        # Removing ".jsonl"
+        file_model_name = filename[:-6]
+        model_answers[file_model_name] = _load_answers(answer_file)
+    else:
+        for root, _, files in os.walk(answer_dir):
+            for filename in files:
+                if filename.endswith(".jsonl"):
+                    # Removing ".jsonl"
+                    file_model_name = filename[:-6]
+                    file_path = os.path.join(root, filename)
+                    model_answers[model_name or file_model_name] = _load_answers(
+                        file_path
+                    )
+                    if model_name == file_model_name:
+                        logger.debug("Found answer file matching: %s", model_name)
+                        break
     return model_answers
+
+
+def _load_answers(answer_file):
+    answers = {}
+    with open(answer_file, encoding="utf-8") as fin:
+        for line in fin:
+            l = json.loads(line)
+            answers[l["question_id"]] = l
+    return answers
 
 
 def load_judge_prompts(prompt_file: str) -> dict:
@@ -304,8 +315,6 @@ def check_data(questions, model_answers, ref_answers, models, judges):
             ), f"Missing reference answer to Question {q['question_id']} for judge {jg.model_name}"
 
 
-def get_model_list(answer_dir):
+def get_model_list(answer_file):
     logger.debug(locals())
-    file_paths = glob.glob(f"{answer_dir}/*.jsonl")
-    file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
-    return file_names
+    return [os.path.splitext(os.path.basename(answer_file))[0]]
