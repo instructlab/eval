@@ -233,13 +233,11 @@ def judge_model(
         multi_turn=True,
     )
 
-    match_stat = {}
-    match_stat["bench_name"] = bench_name
-    match_stat["judge"] = judge_model_name
-    match_stat["model_list"] = models
-    match_stat["total_num_questions"] = len(questions)
-    match_stat["total_num_matches"] = len(matches)
-    match_stat["output_path"] = output_file
+    logger.debug("bench_name=%s", bench_name)
+    logger.debug("judge=%s", judge_model_name)
+    logger.debug("model_list=%s", models)
+    logger.debug("total_num_questions=%s", len(questions))
+    logger.debug("total_num_matches=%s", len(matches))
 
     # Play matches
     if max_workers == 1:
