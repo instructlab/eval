@@ -155,7 +155,6 @@ def judge_model(
     bench_name="mt_bench",
     output_dir="eval_output",
     data_dir=None,
-    model_list=None,
     max_workers=1,
     first_n=None,
     merge_system_user_message=False,
@@ -180,7 +179,7 @@ def judge_model(
     questions = load_questions(question_file, None, None)
 
     # Load answers
-    model_answers = load_model_answers(answer_dir)
+    model_answers = load_model_answers(answer_dir, answer_file=answer_file)
     ref_answers = load_model_answers(ref_answer_dir, judge_model_name)
 
     # Load judge
@@ -189,10 +188,7 @@ def judge_model(
     if first_n:
         questions = questions[:first_n]
 
-    if model_list is None:
-        models = get_model_list(answer_dir)
-    else:
-        models = model_list
+    models = get_model_list(answer_file)
 
     judges = make_judge_single(judge_model_name, judge_prompts)
     output_file = f"{output_base_dir}/model_judgment/{judge_model_name}_single.jsonl"
@@ -280,7 +276,6 @@ def generate_judgment(
     output_dir="eval_output",
     data_dir=None,
     branch=None,
-    model_list=None,
     max_workers=1,
     first_n=None,
     merge_system_user_message=False,
@@ -302,7 +297,6 @@ def generate_judgment(
         output_dir=output_dir,
         data_dir=data_dir,
         branch=branch,
-        model_list=model_list,
         max_workers=max_workers,
         first_n=first_n,
         merge_system_user_message=merge_system_user_message,
