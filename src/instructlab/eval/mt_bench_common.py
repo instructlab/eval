@@ -87,32 +87,15 @@ def load_questions(question_file: str, begin: Optional[int], end: Optional[int])
     return questions
 
 
-def load_model_answers(answer_dir: str, model_name=None, answer_file=None) -> dict:
-    """Load model answers.
+def load_model_answers(answer_file: str, model_name: str | None = None) -> dict:
+    """Load model answers from a single answer file
 
     The return value is a python dict of type:
     Dict[model_name: str -> Dict[question_id: int -> answer: dict]]
     """
     logger.debug(locals())
-    model_answers = {}
-    if answer_file is not None:
-        filename = os.path.basename(answer_file)
-        # Removing ".jsonl"
-        file_model_name = filename[:-6]
-        model_answers[file_model_name] = _load_answers(answer_file)
-    else:
-        for root, _, files in os.walk(answer_dir):
-            for filename in files:
-                if filename.endswith(".jsonl"):
-                    # Removing ".jsonl"
-                    file_model_name = filename[:-6]
-                    file_path = os.path.join(root, filename)
-                    model_answers[model_name or file_model_name] = _load_answers(
-                        file_path
-                    )
-                    if model_name == file_model_name:
-                        logger.debug("Found answer file matching: %s", model_name)
-                        break
+    file_model_name = os.path.splitext(os.path.basename(answer_file))[0]
+    model_answers = {model_name or file_model_name: _load_answers(answer_file)}
     return model_answers
 
 
