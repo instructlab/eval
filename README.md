@@ -9,6 +9,8 @@ Python Library for Evaluation
 
 ## MT-Bench / MT-Bench-Branch Testing Steps
 
+> **⚠️ Note:** Must use Python version 3.10 or later.
+
 ```shell
 # Optional: Use cloud-instance.sh (https://github.com/instructlab/instructlab/tree/main/scripts/infra) to launch and setup the instance
 scripts/infra/cloud-instance.sh ec2 launch -t g5.4xlarge
@@ -34,6 +36,7 @@ In another shell window
 
 ```shell
 export INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS=10 # Optional if you want to shorten run times
+# Commands relative to eval directory
 python3 tests/test_gen_answers.py
 python3 tests/test_branch_gen_answers.py
 ```
