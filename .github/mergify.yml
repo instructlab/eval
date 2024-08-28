@@ -33,15 +33,11 @@ pull_request_rules:
           - files~=\.py$
           - files=pyproject.toml
           - files~=^requirements.*\.txt$
-          - files=scripts/basic-workflow-tests.sh
-          - files~=^scripts/test-data/
           - files=.github/workflows/e2e.yml
       - and:
         - -files~=\.py$
         - -files=pyproject.toml
         - -files~=^requirements.*\.txt$
-        - -files=scripts/basic-workflow-tests.sh
-        - -files~=^scripts/test-data/
         - -files=.github/workflows/e2e.yml
 
     # lint must pass if files change that would trigger this job
