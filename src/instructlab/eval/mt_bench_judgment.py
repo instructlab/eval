@@ -162,7 +162,9 @@ def judge_model(
     """Judge the model based on questions and reference answers"""
     logger.debug(locals())
     package_data_dir = os.path.join(os.path.dirname(__file__), "data")
+    use_builtin_ref_answers = False
     if data_dir is None:
+        use_builtin_ref_answers = True
         data_dir = package_data_dir
 
     data_base_dir = bench_dir(data_dir, bench_name, branch)
@@ -172,15 +174,19 @@ def judge_model(
 
     question_file = os.path.join(data_base_dir, "question.jsonl")
     answer_file = os.path.join(output_base_dir, "model_answer", f"{model_name}.jsonl")
-    answer_dir = os.path.dirname(answer_file)
-    ref_answer_dir = os.path.join(data_base_dir, "reference_answer")
+    if use_builtin_ref_answers:
+        ref_answer_file = os.path.join(data_base_dir, "reference_answer", "gpt-4.jsonl")
+    else:
+        ref_answer_file = os.path.join(
+            data_base_dir, "reference_answer", f"{judge_model_name}.jsonl"
+        )
 
     # Load questions
     questions = load_questions(question_file, None, None)
 
     # Load answers
-    model_answers = load_model_answers(answer_dir, answer_file=answer_file)
-    ref_answers = load_model_answers(ref_answer_dir, judge_model_name)
+    model_answers = load_model_answers(answer_file)
+    ref_answers = load_model_answers(ref_answer_file, judge_model_name)
 
     # Load judge
     judge_prompts = load_judge_prompts(judge_file)
