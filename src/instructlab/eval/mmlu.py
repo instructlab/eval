@@ -122,8 +122,14 @@ class AbstractMMLUEvaluator(Evaluator):
         self.batch_size = batch_size
         self.device = device
 
-    def _run_mmlu(self) -> dict:
-        model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
+    def _run_mmlu(self, server_url: str | None = None) -> dict:
+        if server_url is not None:
+            # Requires lm_eval >= 0.4.4
+            model_args = f"base_url={server_url}/completions,model={self.model_path},tokenizer_backend=huggingface"
+            model = "local-completions"
+        else:
+            model_args = f"pretrained={self.model_path},dtype={self.model_dtype}"
+            model = "hf"
         tm = None
         if self.tasks_dir is not None:
             if not os.path.exists(self.tasks_dir):
@@ -132,7 +138,7 @@ class AbstractMMLUEvaluator(Evaluator):
                 raise InvalidTasksDirError(self.tasks_dir)
             tm = TaskManager(verbosity="DEBUG", include_path=self.tasks_dir)
         mmlu_output = self._simple_evaluate_with_error_handling(
-            model="hf",
+            model=model,
             model_args=model_args,
             tasks=self.tasks,
             num_fewshot=self.few_shots,
@@ -199,9 +205,12 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
             model_path, None, tasks, model_dtype, few_shots, batch_size, device
         )
 
-    def run(self) -> tuple:
+    def run(self, server_url: str | None = None) -> tuple:
         """
         Runs MMLU evaluation
+
+        Attributes
+            server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
 
         Returns:
             overall_score       MMLU score for the overall model evaluation
@@ -214,7 +223,7 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         individual_scores: dict = {}
         agg_score: float = 0.0
 
-        results = self._run_mmlu()
+        results = self._run_mmlu(server_url)
 
         for task in self.tasks:
             mmlu_res = results[task]
@@ -243,9 +252,12 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
 
     name = "mmlu_branch"
 
-    def run(self) -> tuple:
+    def run(self, server_url: str | None = None) -> tuple:
         """
         Runs MMLUBranch evaluation
+
+        Attributes
+            server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
 
         Returns:
             overall_score       Average MMLUBranch score for the task group
@@ -259,7 +271,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
         individual_scores: dict = {}
         agg_score: float = 0.0
 
-        results = self._run_mmlu()
+        results = self._run_mmlu(server_url)
 
         for task, result in results.items():
             if task in self.tasks:
