@@ -338,7 +338,8 @@ def chat_completion_openai(
             openai.AuthenticationError,  # 401
             openai.PermissionDeniedError,  # 403
             openai.NotFoundError,  # 404
-            # General catch-all
+            # Exceptions above (within the same except clause) are called out for documentation purposes.
+            # Catching OpenAIError would cover everything by itself.
             openai.OpenAIError,
         ) as e:
             if not _is_fatal_openai_error(e):
