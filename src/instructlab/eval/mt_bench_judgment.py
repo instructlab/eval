@@ -6,7 +6,6 @@ import os
 # Third Party
 from tqdm import tqdm
 import numpy as np
-import openai
 import pandas as pd
 
 # Local
@@ -18,6 +17,7 @@ from .mt_bench_common import (
     bench_dir,
     check_data,
     get_model_list,
+    get_openai_client,
     load_judge_prompts,
     load_model_answers,
     load_questions,
@@ -278,6 +278,7 @@ def generate_judgment(
     model_name,
     judge_model_name,
     model_api_base,
+    api_key=None,
     bench_name="mt_bench",
     output_dir="eval_output",
     data_dir=None,
@@ -288,7 +289,8 @@ def generate_judgment(
 ):
     """Generate judgment with scores and qa_pairs for a model"""
     logger.debug(locals())
-    openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
+
+    openai_client = get_openai_client(model_api_base, api_key)
 
     first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
     if first_n_env is not None and first_n is None:

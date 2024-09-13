@@ -94,27 +94,30 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
 
     name = "mt_bench"
 
-    def gen_answers(self, server_url) -> None:
+    def gen_answers(self, server_url, api_key: str | None = None) -> None:
         """
         Asks questions to model
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+            api_key         API token for authenticating with model server
         """
         logger.debug(locals())
         mt_bench_answers.generate_answers(
             self.model_name,
             server_url,
+            api_key=api_key,
             output_dir=self.output_dir,
             max_workers=self.max_workers,
         )
 
-    def judge_answers(self, server_url) -> tuple:
+    def judge_answers(self, server_url, api_key: str | None = None) -> tuple:
         """
         Runs MT-Bench judgment
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the judge model
+            api_key         API token for authenticating with model server
 
         Returns:
             overall_score   MT-Bench score for the overall model evaluation
@@ -126,6 +129,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             self.model_name,
             self.judge_model_name,
             server_url,
+            api_key=api_key,
             max_workers=self.max_workers,
             output_dir=self.output_dir,
             merge_system_user_message=self.merge_system_user_message,
@@ -171,12 +175,13 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         self.taxonomy_git_repo_path = taxonomy_git_repo_path
         self.branch = branch
 
-    def gen_answers(self, server_url) -> None:
+    def gen_answers(self, server_url, api_key: str | None = None) -> None:
         """
         Asks questions to model
 
         Attributes
             server_url  Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+            api_key     API token for authenticating with model server
         """
         logger.debug(locals())
         mt_bench_branch_generator.generate(
@@ -188,6 +193,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         mt_bench_answers.generate_answers(
             self.model_name,
             server_url,
+            api_key=api_key,
             branch=self.branch,
             output_dir=self.output_dir,
             data_dir=self.output_dir,
@@ -195,12 +201,13 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             bench_name="mt_bench_branch",
         )
 
-    def judge_answers(self, server_url) -> tuple:
+    def judge_answers(self, server_url, api_key: str | None = None) -> tuple:
         """
         Runs MT-Bench-Branch judgment.  Judgments can be compared across runs with consistent question_id -> qna file name.
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the judge model
+            api_key         API token for authenticating with model server
 
         Returns:
             qa_pairs        Question and answer pairs (with scores) from the evaluation
@@ -210,6 +217,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             self.model_name,
             self.judge_model_name,
             server_url,
+            api_key=api_key,
             branch=self.branch,
             max_workers=self.max_workers,
             output_dir=self.output_dir,

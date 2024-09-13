@@ -8,7 +8,6 @@ import time
 # Third Party
 # TODO need to look into this dependency
 from fastchat.model.model_adapter import get_conversation_template  # type: ignore
-import openai
 import shortuuid
 import tqdm
 
@@ -17,6 +16,7 @@ from .logger_config import setup_logger
 from .mt_bench_common import (
     bench_dir,
     chat_completion_openai,
+    get_openai_client,
     load_questions,
     temperature_config,
 )
@@ -98,6 +98,7 @@ def get_answer(
 def generate_answers(
     model_name,
     model_api_base,
+    api_key=None,
     branch=None,
     output_dir="eval_output",
     data_dir=None,
@@ -111,7 +112,8 @@ def generate_answers(
 ):
     """Generate model answers to be judged"""
     logger.debug(locals())
-    openai_client = openai.OpenAI(base_url=model_api_base, api_key="NO_API_KEY")
+
+    openai_client = get_openai_client(model_api_base, api_key)
 
     if data_dir is None:
         data_dir = os.path.join(os.path.dirname(__file__), "data")

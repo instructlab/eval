@@ -365,3 +365,10 @@ def check_data(questions, model_answers, ref_answers, models, judges):
 def get_model_list(answer_file):
     logger.debug(locals())
     return [os.path.splitext(os.path.basename(answer_file))[0]]
+
+
+def get_openai_client(model_api_base, api_key):
+    if api_key is None:
+        api_key = "NO_API_KEY"
+    openai_client = openai.OpenAI(base_url=model_api_base, api_key=api_key)
+    return openai_client
