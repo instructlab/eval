@@ -4,15 +4,20 @@
 # SPDX-License-Identifier: Apache-2.0
 Backport
 backported
+benchmarking
 codebase
+dr
 eval
 gpt
 hoc
 instructlab
 jsonl
 justfile
+MMLU
 openai
+SDG
 Tatsu
+tl
 TODO
 venv
 vllm
