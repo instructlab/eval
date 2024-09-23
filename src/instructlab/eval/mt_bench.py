@@ -52,31 +52,49 @@ class AbstractMTBenchEvaluator(Evaluator):
         self.output_dir = output_dir
         self.serving_gpus = serving_gpus
         self.merge_system_user_message = merge_system_user_message
+        self.max_workers = self._calc_max_workers(max_workers, serving_gpus)
 
-        if max_workers == "auto":
-            try:
-                # Not available on all platforms
-                usable_cpu_count = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
-            except AttributeError:
-                usable_cpu_count = multiprocessing.cpu_count()
-            if serving_gpus is not None:
-                # Tune max_workers based on hardware configuration: min(#GPUs being used * 10, #CPU cores)
-                # Please see https://github.com/instructlab/instructlab/issues/2050 for detailed explanation
-                self.max_workers = min(max(serving_gpus, 1) * 10, usable_cpu_count)
-                logger.debug("Auto tuning max_workers to %s", self.max_workers)
+    def _calc_max_workers(
+        self, max_workers: int | str | None, serving_gpus: int | None
+    ):
+        calculated_max_workers = None
+        if max_workers is not None:
+            if max_workers == "auto":
+                try:
+                    # Not available on all platforms
+                    usable_cpu_count = len(os.sched_getaffinity(0))  # type: ignore[attr-defined]
+                except AttributeError:
+                    usable_cpu_count = multiprocessing.cpu_count()
+                if serving_gpus is not None:
+                    # Tune max_workers based on hardware configuration: min(#GPUs being used * 10, #CPU cores)
+                    # Please see https://github.com/instructlab/instructlab/issues/2050 for detailed explanation
+                    calculated_max_workers = min(
+                        max(serving_gpus, 1) * 10, usable_cpu_count
+                    )
+                    logger.debug(
+                        "Auto tuning max_workers to %s", calculated_max_workers
+                    )
+                else:
+                    # Don't be too aggressive when serving_gpus isn't specified. Use half the cpu count.
+                    calculated_max_workers = usable_cpu_count // 2
+                    logger.debug(
+                        "max_workers set to auto but serving_gpus is not specified. Defaulting to (cpu count / 2): %s",
+                        calculated_max_workers,
+                    )
             else:
-                # Don't be too aggressive when serving_gpus isn't specified. Use half the cpu count.
-                self.max_workers = usable_cpu_count // 2
-                logger.debug(
-                    "max_workers set to auto but serving_gpus is not specified. Defaulting to (cpu count / 2): %s",
-                    self.max_workers,
-                )
+                if isinstance(max_workers, int) and max_workers > 0:
+                    logger.debug("max_workers specified as: %s", max_workers)
+                    calculated_max_workers = max_workers
+                else:
+                    raise InvalidMaxWorkersError(max_workers)
+        return calculated_max_workers
+
+    def _get_effective_max_workers(self, max_workers, serving_gpus):
+        if max_workers is not None:
+            effective_max_workers = self._calc_max_workers(max_workers, serving_gpus)
         else:
-            if isinstance(max_workers, int) and max_workers > 0:
-                logger.debug("max_workers specified as: %s", max_workers)
-                self.max_workers = max_workers
-            else:
-                raise InvalidMaxWorkersError(max_workers)
+            effective_max_workers = self.max_workers
+        return effective_max_workers
 
 
 class MTBenchEvaluator(AbstractMTBenchEvaluator):
@@ -94,13 +112,21 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
 
     name = "mt_bench"
 
-    def gen_answers(self, server_url, api_key: str | None = None) -> None:
+    def gen_answers(
+        self,
+        server_url,
+        api_key: str | None = None,
+        max_workers: int | str | None = None,
+        serving_gpus: int | None = None,
+    ) -> None:
         """
         Asks questions to model
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
             api_key         API token for authenticating with model server
+            max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
+            serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
         """
         logger.debug(locals())
         mt_bench_answers.generate_answers(
@@ -108,16 +134,24 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             server_url,
             api_key=api_key,
             output_dir=self.output_dir,
-            max_workers=self.max_workers,
+            max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
         )
 
-    def judge_answers(self, server_url, api_key: str | None = None) -> tuple:
+    def judge_answers(
+        self,
+        server_url,
+        api_key: str | None = None,
+        max_workers: int | str | None = None,
+        serving_gpus: int | None = None,
+    ) -> tuple:
         """
         Runs MT-Bench judgment
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the judge model
             api_key         API token for authenticating with model server
+            max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
+            serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
 
         Returns:
             overall_score   MT-Bench score for the overall model evaluation
@@ -130,7 +164,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             self.judge_model_name,
             server_url,
             api_key=api_key,
-            max_workers=self.max_workers,
+            max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
             output_dir=self.output_dir,
             merge_system_user_message=self.merge_system_user_message,
         )
@@ -175,13 +209,21 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         self.taxonomy_git_repo_path = taxonomy_git_repo_path
         self.branch = branch
 
-    def gen_answers(self, server_url, api_key: str | None = None) -> None:
+    def gen_answers(
+        self,
+        server_url,
+        api_key: str | None = None,
+        max_workers: int | str | None = None,
+        serving_gpus: int | None = None,
+    ) -> None:
         """
         Asks questions to model
 
         Attributes
             server_url  Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
             api_key     API token for authenticating with model server
+            max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
+            serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
         """
         logger.debug(locals())
         mt_bench_branch_generator.generate(
@@ -197,17 +239,25 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             branch=self.branch,
             output_dir=self.output_dir,
             data_dir=self.output_dir,
-            max_workers=self.max_workers,
+            max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
             bench_name="mt_bench_branch",
         )
 
-    def judge_answers(self, server_url, api_key: str | None = None) -> tuple:
+    def judge_answers(
+        self,
+        server_url,
+        api_key: str | None = None,
+        max_workers: int | str | None = None,
+        serving_gpus: int | None = None,
+    ) -> tuple:
         """
         Runs MT-Bench-Branch judgment.  Judgments can be compared across runs with consistent question_id -> qna file name.
 
         Attributes
             server_url      Model server endpoint (Ex: http://localhost:8000/v1) for the judge model
             api_key         API token for authenticating with model server
+            max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
+            serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
 
         Returns:
             qa_pairs        Question and answer pairs (with scores) from the evaluation
@@ -219,7 +269,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             server_url,
             api_key=api_key,
             branch=self.branch,
-            max_workers=self.max_workers,
+            max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
             output_dir=self.output_dir,
             data_dir=self.output_dir,
             bench_name="mt_bench_branch",
