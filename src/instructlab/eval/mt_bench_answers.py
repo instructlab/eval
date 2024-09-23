@@ -6,8 +6,6 @@ import os
 import time
 
 # Third Party
-# TODO need to look into this dependency
-from fastchat.model.model_adapter import get_conversation_template  # type: ignore
 import shortuuid
 import tqdm
 
@@ -20,6 +18,7 @@ from .mt_bench_common import (
     load_questions,
     temperature_config,
 )
+from .mt_bench_model_adapter import get_conversation_template  # type: ignore
 
 logger = setup_logger(__name__)
 
@@ -61,7 +60,7 @@ def get_answer(
 
     choices = []
     for i in range(num_choices):
-        conv = get_conversation_template(model)
+        conv = get_conversation_template(model, "granite")
 
         turns = []
         for j in range(len(question["turns"])):
