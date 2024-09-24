@@ -187,7 +187,7 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         model_dtype  dtype of model when served
         few_shots    number of examples
         batch_size   batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
-        device       PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        device       PyTorch device (e.g. "cpu", "cuda", or "mps") for running models
     """
 
     name = "mmlu"
@@ -199,8 +199,20 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         model_dtype="bfloat16",
         few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
-        device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+        device: str = "auto",
     ) -> None:
+        # Autodetect device
+        if device == "auto":
+            if torch.cuda.is_available():
+                device = "cuda"
+            elif torch.mps.is_available():
+                device = "mps"
+            else:
+                device = "cpu"
+
+        # Convert to torch.device object
+        device = torch.device(device)
+
         super().__init__(
             model_path, None, tasks, model_dtype, few_shots, batch_size, device
         )
@@ -247,7 +259,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
         model_dtype     dtype of model when served
         few_shots       number of examples
         batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
-        device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        device          PyTorch device (e.g. "cpu", "cuda", or "mps") for running models
     """
 
     name = "mmlu_branch"
