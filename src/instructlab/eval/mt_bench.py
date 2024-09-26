@@ -33,8 +33,6 @@ class AbstractMTBenchEvaluator(Evaluator):
         model_name                  Name of the model to evaluate
         judge_model_name            Name of the judge model
         output_dir                  The directory to use for evaluation output
-        max_workers                 Max parallel workers to run the evaluation with (int or "auto")
-        serving_gpus                Number of gpus allocated for serving.  Used to tune with max_workers=auto.
         merge_system_user_message   Boolean indicating whether to merge system and user messages (required for Mistral based judges)
     """
 
@@ -43,16 +41,12 @@ class AbstractMTBenchEvaluator(Evaluator):
         model_name: str,
         judge_model_name: str,
         output_dir: str = "eval_output",
-        max_workers: int | str = "auto",
-        serving_gpus: int | None = None,
         merge_system_user_message: bool = False,
     ) -> None:
         self.model_name = model_name
         self.judge_model_name = judge_model_name
         self.output_dir = output_dir
-        self.serving_gpus = serving_gpus
         self.merge_system_user_message = merge_system_user_message
-        self.max_workers = self._calc_max_workers(max_workers, serving_gpus)
 
     def _calc_max_workers(
         self, max_workers: int | str | None, serving_gpus: int | None
@@ -105,8 +99,6 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
         model_name                  Name of the model to evaluate
         judge_model_name            Name of the judge model
         output_dir                  The directory to use for evaluation output
-        max_workers                 Max parallel workers to run the evaluation with (int or "auto")
-        serving_gpus                Number of gpus allocated for serving.  Used to tune with max_workers=auto.
         merge_system_user_message   Boolean indicating whether to merge system and user messages (required for Mistral based judges)
     """
 
@@ -180,8 +172,6 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         taxonomy_git_repo_path      Taxonomy git repo path
         branch                      Branch of taxonomy repo to eval QNAs against model
         output_dir                  The directory to use for evaluation output
-        max_workers                 Max parallel workers to run the evaluation with (int or "auto")
-        serving_gpus                Number of gpus allocated for serving.  Used to tune with max_workers=auto.
         merge_system_user_message   Boolean indicating whether to merge system and user messages (required for Mistral based judges)
     """
 
@@ -194,16 +184,12 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         taxonomy_git_repo_path: str,
         branch: str,
         output_dir: str = "eval_output",
-        max_workers: int | str = "auto",
-        serving_gpus: int | None = None,
         merge_system_user_message: bool = False,
     ) -> None:
         super().__init__(
             model_name,
             judge_model_name,
             output_dir,
-            max_workers,
-            serving_gpus,
             merge_system_user_message,
         )
         self.taxonomy_git_repo_path = taxonomy_git_repo_path
