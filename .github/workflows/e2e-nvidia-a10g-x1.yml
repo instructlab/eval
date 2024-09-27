@@ -1,0 +1,205 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: E2E (NVIDIA A10G x1)
+
+on:
+  workflow_dispatch:
+    inputs:
+      pr_or_branch:
+        description: 'pull request number or branch name'
+        required: true
+        default: 'main'
+
+jobs:
+  start-runner:
+    name: Start external EC2 runner
+    runs-on: ubuntu-latest
+    outputs:
+      label: ${{ steps.start-ec2-runner.outputs.label }}
+      ec2-instance-id: ${{ steps.start-ec2-runner.outputs.ec2-instance-id }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Start EC2 runner
+        id: start-ec2-runner
+        uses: machulav/ec2-github-runner@fcfb31a5760dad1314a64a0e172b78ec6fc8a17e # v2.3.6
+        with:
+          mode: start
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          ec2-image-id: ami-00c51d9c1374eda97
+          ec2-instance-type: g5.2xlarge
+          subnet-id: subnet-02d230cffd9385bd4
+          security-group-id: sg-06300447c4a5fbef3
+          iam-role-name: instructlab-ci-runner
+          aws-resource-tags: >
+            [
+              {"Key": "Name", "Value": "instructlab-ci-github-runner"},
+              {"Key": "GitHubRepository", "Value": "${{ github.repository }}"}
+            ]
+
+  e2e:
+    name: E2E Test
+    needs: start-runner
+    runs-on: ${{ needs.start-runner.outputs.label }}
+
+    permissions:
+      pull-requests: write
+
+    steps:
+      - name: Checkout instructlab/eval
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          # https://github.com/actions/checkout/issues/249
+          fetch-depth: 0
+
+      - name: Checkout instructlab/instructlab
+        uses: actions/checkout@692973e3d937129bcbf40652eb9f2f61becf3332 # v4.1.7
+        with:
+          repository: "instructlab/instructlab"
+          path: "instructlab"
+          fetch-depth: 0
+
+      - name: Determine if pr_or_branch is a PR number
+        id: check_pr
+        run: |
+          nvidia-smi
+          if [[ "${{ github.event.inputs.pr_or_branch }}" =~ ^[0-9]+$ ]]; then
+            echo "is_pr=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "is_pr=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check if gh cli is installed
+        id: gh_cli
+        run: |
+          if command -v gh &> /dev/null ; then
+            echo "gh_cli_installed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "gh_cli_installed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install gh CLI
+        if: steps.gh_cli.outputs.gh_cli_installed == 'false'
+        run: |
+          sudo dnf install 'dnf-command(config-manager)' -y
+          sudo dnf config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+          sudo dnf install gh --repo gh-cli -y
+
+      - name: test gh CLI
+        run: |
+          gh --version
+
+      - name: set default repo
+        run: |
+          gh repo set-default ${{ github.server_url }}/${{ github.repository }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add comment to PR
+        if: steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          gh pr comment "${{ github.event.inputs.pr_or_branch }}" -b "${{ github.workflow }} workflow launched on this PR: [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fetch and checkout PR
+        if: steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          gh pr checkout ${{ github.event.inputs.pr_or_branch }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout branch
+        if: steps.check_pr.outputs.is_pr == 'false'
+        run: |
+          git checkout ${{ github.event.inputs.pr_or_branch }}
+
+      - name: Install Packages
+        run: |
+          cat /etc/os-release
+          sudo dnf install -y gcc gcc-c++ make git python3.11 python3.11-devel
+
+      - name: Install ilab
+        run: |
+          export CUDA_HOME="/usr/local/cuda"
+          export LD_LIBRRY_PATH="$LD_LIBRARY_PATH:/usr/local/cuda/lib64:/usr/local/cuda/extras/CUPTI/lib64"
+          export PATH="$PATH:$CUDA_HOME/bin"
+          python3.11 -m venv venv
+          . venv/bin/activate
+          nvidia-smi
+          sed 's/\[.*\]//' requirements.txt > constraints.txt
+          python3.11 -m pip cache remove llama_cpp_python
+          CMAKE_ARGS="-DLLAMA_CUBLAS=on" python3.11 -m pip install --force-reinstall --no-binary llama_cpp_python -c constraints.txt llama_cpp_python
+          python3.11 -m pip install bitsandbytes
+
+          # TODO This should be added to instructlab-training
+          python3.11 -m pip install packaging wheel
+
+          python3.11 -m pip install instructlab-training[cuda]
+
+          # Install the local version of eval before installing the CLI so PR changes are included
+          python3.11 -m pip install .
+
+          python3.11 -m pip install instructlab
+
+      - name: Run e2e test
+        run: |
+          nvidia-smi
+          # This env variable is used on GPUs with less vRAM. It only allows cuda to alloc small chunks of vRAM at a time, usually helping to avoid OOM errors.
+          # This is not a good solution for production code, as setting ENV variables for users isn't best practice. However, it is a helpful manual workaround.
+          export PYTORCH_CUDA_ALLOC_CONF=garbage_collection_threshold:0.6,max_split_size_mb:128
+          . venv/bin/activate
+          # TODO: for some reason we need to reinstall DS in order to get fused adam support
+          # This means we need to manually rm and re-install a bunch of packages. Investigate why this is.
+          python3.11 -m pip uninstall -y deepspeed
+
+          python3.11 -m pip cache purge
+
+          DS_BUILD_CPU_ADAM=1 BUILD_UTILS=1 python3.11 -m pip install deepspeed
+
+          nvidia-smi
+
+          python3.11 -m pip show nvidia-nccl-cu12
+          
+          cd instructlab
+          ./scripts/basic-workflow-tests.sh -em
+
+      - name: Add comment to PR if the workflow failed
+        if: failure() && steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          gh pr comment "${{ github.event.inputs.pr_or_branch }}" -b "e2e workflow failed on this PR: [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}), please investigate."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add comment to PR if the workflow succeeded
+        if: success() && steps.check_pr.outputs.is_pr == 'true'
+        run: |
+          gh pr comment "${{ github.event.inputs.pr_or_branch }}" -b "e2e workflow succeeded on this PR: [View run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}), congrats!"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  stop-runner:
+    name: Stop external EC2 runner
+    needs:
+      - start-runner
+      - e2e
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 # v4.0.2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Stop EC2 runner
+        uses: machulav/ec2-github-runner@fcfb31a5760dad1314a64a0e172b78ec6fc8a17e # v2.3.6
+        with:
+          mode: stop
+          github-token: ${{ secrets.GH_PERSONAL_ACCESS_TOKEN }}
+          label: ${{ needs.start-runner.outputs.label }}
+          ec2-instance-id: ${{ needs.start-runner.outputs.ec2-instance-id }}
