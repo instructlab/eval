@@ -246,10 +246,12 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
 
         Returns:
+            overall_score   overall score from the evaluation
             qa_pairs        Question and answer pairs (with scores) from the evaluation
+            error_rate      percentage of questions dropped due to errors during evaluation
         """
         logger.debug(locals())
-        _, qa_pairs, _, error_rate = mt_bench_judgment.generate_judgment(
+        overall_score, qa_pairs, _, error_rate = mt_bench_judgment.generate_judgment(
             self.model_name,
             self.judge_model_name,
             server_url,
@@ -261,4 +263,4 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             bench_name="mt_bench_branch",
             merge_system_user_message=self.merge_system_user_message,
         )
-        return qa_pairs, error_rate
+        return overall_score, qa_pairs, error_rate
