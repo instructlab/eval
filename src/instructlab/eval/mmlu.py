@@ -122,6 +122,37 @@ class AbstractMMLUEvaluator(Evaluator):
         self.batch_size = batch_size
         self.device = device
 
+    def run(self, server_url: str | None = None) -> tuple:
+        """
+        Runs evaluation
+
+        Attributes
+            server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+
+        Returns:
+            overall_score       Average score for the task group
+            individual_scores   Individual scores for each task in the task group
+        """
+        logger.debug(locals())
+
+        # TODO: make this a parameter for class?
+        os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
+        individual_scores: dict = {}
+        agg_score: float = 0.0
+
+        results = self._run_mmlu(server_url)
+        for task, result in results.items():
+            agg_score += float(result["acc,none"])
+            individual_scores[task] = {
+                "score": float(result["acc,none"]),
+                "stderr": float(result["acc_stderr,none"]),
+            }
+
+        overall_score = float(agg_score / len(self.tasks))
+
+        return overall_score, individual_scores
+
     def _run_mmlu(self, server_url: str | None = None) -> dict:
         if server_url is not None:
             # Requires lm_eval >= 0.4.4
@@ -205,36 +236,6 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
             model_path, None, tasks, model_dtype, few_shots, batch_size, device
         )
 
-    def run(self, server_url: str | None = None) -> tuple:
-        """
-        Runs MMLU evaluation
-
-        Attributes
-            server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
-
-        Returns:
-            overall_score       MMLU score for the overall model evaluation
-            individual_scores   Individual MMLU score for each task
-        """
-        logger.debug(locals())
-        # TODO: make this a parameter for class?
-        os.environ["TOKENIZERS_PARALLELISM"] = "true"
-
-        individual_scores: dict = {}
-        agg_score: float = 0.0
-
-        results = self._run_mmlu(server_url)
-
-        for task in self.tasks:
-            mmlu_res = results[task]
-            agg_score += float(mmlu_res["acc,none"])
-            individual_scores[task] = {}
-            individual_scores[task]["score"] = float(mmlu_res["acc,none"])
-            individual_scores[task]["stderr"] = float(mmlu_res["acc_stderr,none"])
-
-        overall_score = float(agg_score / len(self.tasks))
-        return overall_score, individual_scores
-
 
 class MMLUBranchEvaluator(AbstractMMLUEvaluator):
     """
@@ -251,37 +252,3 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
     """
 
     name = "mmlu_branch"
-
-    def run(self, server_url: str | None = None) -> tuple:
-        """
-        Runs MMLUBranch evaluation
-
-        Attributes
-            server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
-
-        Returns:
-            overall_score       Average MMLUBranch score for the task group
-            individual_scores   Individual MMLUBranch scores for each task in the task group
-        """
-        logger.debug(locals())
-
-        # TODO: make this a parameter for class?
-        os.environ["TOKENIZERS_PARALLELISM"] = "true"
-
-        individual_scores: dict = {}
-        agg_score: float = 0.0
-
-        results = self._run_mmlu(server_url)
-
-        for task, result in results.items():
-            if task in self.tasks:
-                agg_score += float(result["acc,none"])
-            else:
-                individual_scores[task] = {
-                    "score": float(result["acc,none"]),
-                    "stderr": float(result["acc_stderr,none"]),
-                }
-
-        overall_score = float(agg_score / len(self.tasks))
-
-        return overall_score, individual_scores
