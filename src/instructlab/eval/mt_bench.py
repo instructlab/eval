@@ -149,6 +149,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             overall_score   MT-Bench score for the overall model evaluation
             qa_pairs        Question and answer pairs (with scores) from the evaluation
             turn_scores     A list of indexed turn scores
+            error_rate      Percentage of questions dropped due to errors during evaluation
         """
         logger.debug(locals())
         return mt_bench_judgment.generate_judgment(
@@ -246,9 +247,9 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
 
         Returns:
-            overall_score   overall score from the evaluation
+            overall_score   Overall score from the evaluation
             qa_pairs        Question and answer pairs (with scores) from the evaluation
-            error_rate      percentage of questions dropped due to errors during evaluation
+            error_rate      Percentage of questions dropped due to errors during evaluation
         """
         logger.debug(locals())
         overall_score, qa_pairs, _, error_rate = mt_bench_judgment.generate_judgment(
