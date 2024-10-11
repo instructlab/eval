@@ -1,5 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 
+# Standard
+import traceback
+
 
 class EvalError(Exception):
     """
@@ -107,7 +110,8 @@ class TasksDirNotFoundError(EvalError):
     def __init__(self, tasks_dir) -> None:
         super().__init__()
         self.tasks_dir = tasks_dir
-        self.message = f"Tasks dir not found: {tasks_dir}"
+        self.traceback = traceback.format_exc()
+        self.message = f"Tasks dir not found: {tasks_dir}\nTraceback: {self.traceback}"
 
 
 class InvalidTasksDirError(EvalError):
