@@ -134,3 +134,15 @@ class ModelServingAPIError(EvalError):
     def __init__(self) -> None:
         super().__init__()
         self.message = "Failed to receive a reply from model serving API."
+
+
+class EmptyTaxonomyError(EvalError):
+    """
+    Error raised when taxonomy doesn't contain any skill QNAs
+    Attributes
+        message              error message to be printed on raise
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.message = "Provided taxonomy doesn't contain any skill qna.yaml files"
