@@ -1,0 +1,3 @@
+task: my_task
+include: unitxt
+recipe: card=cards.wnli,template=templates.classification.multi_class.relation.default,max_train_instances=5,loader_limit=20,num_demos=3,demos_pool_size=10
