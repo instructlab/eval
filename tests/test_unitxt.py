@@ -1,16 +1,16 @@
 # First Party
-from instructlab.eval.unitxt import UnitxtEvaluator
+from instruclab.eval.unitxt import UnitxtEvaluator
 
 
 def test_unitxt():
     print("===> Executing 'test_unitxt'...")
     try:
         model_path = "instructlab/granite-7b-lab"
-        tasks = ["my_task"]
+        unitxt_recipe = "card=cards.wnli,template=templates.classification.multi_class.relation.default,max_train_instances=5,loader_limit=20,num_demos=3,demos_pool_size=10"
         unitxt = UnitxtEvaluator(
-            model_path=model_path, tasks_dir='./my_tasks/', tasks=tasks
+            model_path=model_path, unitxt_recipe=unitxt_recipe
         )
-        overall_score, _ = unitxt.run()
+        overall_score, single_scores = unitxt.run()
         print(overall_score)
     except Exception as exc:
         print(f"'test_unitxt_branch' failed: {exc}")

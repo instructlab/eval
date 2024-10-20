@@ -153,7 +153,7 @@ class AbstractMMLUEvaluator(Evaluator):
 
         return overall_score, individual_scores
 
-    def _run_mmlu(self, server_url: str | None = None) -> dict:
+    def _run_mmlu(self, server_url: str | None = None, return_all_results:bool = False) -> dict:
         if server_url is not None:
             # Requires lm_eval >= 0.4.4
             model_args = f"base_url={server_url}/completions,model={self.model_path},tokenizer_backend=huggingface"
@@ -177,7 +177,10 @@ class AbstractMMLUEvaluator(Evaluator):
             device=self.device,
             task_manager=tm,
         )
-        results = mmlu_output["results"]
+        if return_all_results:
+            results = mmlu_output
+        else:
+            results = mmlu_output["results"]
         return results
 
     # This method converts general errors from simple_evaluate
