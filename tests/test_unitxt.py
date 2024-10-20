@@ -1,5 +1,5 @@
 # First Party
-from instruclab.eval.unitxt import UnitxtEvaluator
+from instructlab.eval.unitxt import UnitxtEvaluator
 
 
 def test_unitxt():
