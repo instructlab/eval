@@ -20,6 +20,8 @@ from .logger_config import setup_logger
 
 logger = setup_logger(__name__)
 
+TEMP_DIR_PREFIX = 'unitxt_temp'
+
 class UnitxtEvaluator(MMLUBranchEvaluator):
     """
     An evaluator class, running Unitxt evaluation
@@ -47,17 +49,17 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
 
     def prepare_unitxt_files(self, unitxt_recipe)->tuple:
         temp_task = str(uuid4())
-        temp_tasks_dir = f'unitxt_temp_{temp_task}'
+        temp_tasks_dir = f'{TEMP_DIR_PREFIX}_{temp_task}'
         yaml_file = os.path.join(temp_tasks_dir,f"{temp_task}.yaml")
         create_unitxt_pointer(temp_tasks_dir)
         create_unitxt_yaml(yaml_file=yaml_file, unitxt_recipe=unitxt_recipe, task_name=temp_task)
         return temp_task,temp_tasks_dir
 
     def remove_temp_files(self):
-        if self.tasks_dir.startswith('temp_'): #to avoid unintended deletion if this class is inherited
+        if self.tasks_dir.startswith(TEMP_DIR_PREFIX): #to avoid unintended deletion if this class is inherited
             shutil.rmtree(self.tasks_dir)
         else:
-            logger.warning("unitxt tasks dir did not start with 'temp_' and therefor was not deleted")
+            logger.warning(f"unitxt tasks dir did not start with '{TEMP_DIR_PREFIX}' and therefor was not deleted")
 
     def run(self,server_url: str | None = None) -> tuple:
         """
