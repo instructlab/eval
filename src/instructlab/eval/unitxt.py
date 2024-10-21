@@ -37,11 +37,11 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         model_path,   
         unitxt_recipe: str,
     ):
-        tasks,tasks_dir = self.prepare_unitxt_files(unitxt_recipe)
+        task,tasks_dir = self.prepare_unitxt_files(unitxt_recipe)
         super().__init__(
             model_path = model_path,
             tasks_dir = tasks_dir,
-            tasks = tasks,
+            tasks = [task],
             few_shots = 0
         )
 
