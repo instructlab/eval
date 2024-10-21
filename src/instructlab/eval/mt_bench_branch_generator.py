@@ -13,7 +13,12 @@ import shortuuid
 import yaml
 
 # Local
-from .exceptions import GitRepoNotFoundError, InvalidGitBranchError, InvalidGitRepoError
+from .exceptions import (
+    EmptyTaxonomyError,
+    GitRepoNotFoundError,
+    InvalidGitBranchError,
+    InvalidGitRepoError,
+)
 from .logger_config import setup_logger
 from .mt_bench_common import bench_dir
 
@@ -57,6 +62,8 @@ def generate(judge_model_name, branch, taxonomy_dir, output_dir):
             taxonomy_repo.git.checkout(branch)
 
         qna_file_list = get_file_paths(taxonomy_dir)
+        if len(qna_file_list) == 0:
+            raise EmptyTaxonomyError
 
         question_lst = []
         reference_answers = []
