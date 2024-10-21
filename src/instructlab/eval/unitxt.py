@@ -70,8 +70,6 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         logger.debug(locals())
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
         results = self._run_mmlu(server_url=server_url, return_all_results=True)
-        with open('my_tasks/output.txt', 'w') as f:
-            print(results, file=f)
         taskname = self.tasks[0]
         global_scores = results['results'][taskname]
         global_scores.pop('alias')
