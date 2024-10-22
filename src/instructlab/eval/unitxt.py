@@ -39,23 +39,29 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         model_path,   
         unitxt_recipe: str,
     ):
-        task,tasks_dir = self.prepare_unitxt_files(unitxt_recipe)
+        task = self.assign_task_name()
+        tasks_dir = self.assign_tasks_dir(task)
         super().__init__(
             model_path = model_path,
             tasks_dir = tasks_dir,
             tasks = [task],
             few_shots = 0
         )
+        self.unitxt_recipe = unitxt_recipe
 
-    def prepare_unitxt_files(self, unitxt_recipe)->tuple:
-        temp_task = str(uuid4())
-        temp_tasks_dir = f'{TEMP_DIR_PREFIX}_{temp_task}'
-        yaml_file = os.path.join(temp_tasks_dir,f"{temp_task}.yaml")
-        create_unitxt_pointer(temp_tasks_dir)
-        create_unitxt_yaml(yaml_file=yaml_file, unitxt_recipe=unitxt_recipe, task_name=temp_task)
-        return temp_task,temp_tasks_dir
+    def assign_tasks_dir(self, task):
+        return f'{TEMP_DIR_PREFIX}_{task}'
 
-    def remove_temp_files(self):
+    def assign_task_name(self):
+        return str(uuid4())
+
+    def prepare_unitxt_files(self)->tuple:
+        task = self.tasks[0]
+        yaml_file = os.path.join(self.tasks_dir,f"{task}.yaml")
+        create_unitxt_pointer(self.tasks_dir)
+        create_unitxt_yaml(yaml_file=yaml_file, unitxt_recipe=self.unitxt_recipe, task_name=task)
+
+    def remove_unitxt_files(self):
         if self.tasks_dir.startswith(TEMP_DIR_PREFIX): #to avoid unintended deletion if this class is inherited
             shutil.rmtree(self.tasks_dir)
         else:
@@ -69,6 +75,7 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
             overall_scores       Average scores for the task group
             individual_scores   Individual scores for each task in the task group
         """
+        self.prepare_unitxt_files()
         logger.debug(locals())
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
         results = self._run_mmlu(server_url=server_url, return_all_results=True)
@@ -89,7 +96,7 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
             logger.error(e)
             logger.error(e.__traceback__)
             instance_scores = None
-        self.remove_temp_files()
+        self.remove_unitxt_files()
         return global_scores,instance_scores
 
 
@@ -101,7 +108,7 @@ def create_unitxt_yaml(yaml_file,unitxt_recipe, task_name):
     }
     with open(yaml_file, 'w') as file:
         yaml.dump(data, file, default_flow_style=False)
-    logger.info(f"task {task} unitxt recipe written to {yaml_file}")
+    logger.debug(f"task {task} unitxt recipe written to {yaml_file}")
 
 def create_unitxt_pointer(tasks_dir):
     class_line = "class: !function " + task.__file__.replace("task.py", "task.Unitxt")
@@ -109,4 +116,4 @@ def create_unitxt_pointer(tasks_dir):
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
     with open(output_file, 'w') as f:
         f.write(class_line)
-    logger.info(f"Unitxt task pointer written to {output_file}")
+    logger.debug(f"Unitxt task pointer written to {output_file}")
