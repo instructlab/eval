@@ -10,13 +10,13 @@ def test_unitxt():
         unitxt = UnitxtEvaluator(model_path=model_path, unitxt_recipe=unitxt_recipe)
         overall_score, single_scores = unitxt.run()
         print(overall_score)
-        sample_score = 'f1_micro,none'
+        sample_score = "f1_micro,none"
         assert sample_score in overall_score
-        assert overall_score[sample_score] > 0 
+        assert overall_score[sample_score] > 0
     except Exception as exc:
         print(f"'test_unitxt_branch' failed: {exc}")
         return False
-    
+
     return True
 
 
