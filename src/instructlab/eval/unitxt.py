@@ -29,7 +29,7 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
     An evaluator class, running Unitxt evaluation
 
     Attributes:
-        model_path      absolute path to or name of a huggingface model
+        model_path      Absolute path to or name of a huggingface model
         unitxt_recipe   unitxt recipe (see unitxt.ai for more information)
                         A Recipe holds a complete specification of a unitxt pipeline
                         Example: card=cards.wnli,template=templates.classification.multi_class.relation.default,max_train_instances=5,loader_limit=20,num_demos=3,demos_pool_size=10
@@ -71,7 +71,8 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
             shutil.rmtree(self.tasks_dir)
         else:
             logger.warning(
-                "unitxt tasks dir did not start with '%s' and therefor was not deleted",
+                "unitxt tasks dir '%s' did not start with '%s' prefix and therefore was not deleted",
+                self.tasks_dir,
                 TEMP_DIR_PREFIX,
             )
 
@@ -79,8 +80,11 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         """
         Runs evaluation
 
+        Attributes:
+            server_url(str|None)    Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+
         Returns:
-            overall_scores       Average scores for the task group
+            overall_scores      Average scores for the task group
             individual_scores   Individual scores for each task in the task group
         """
         self.prepare_unitxt_files()
@@ -111,8 +115,8 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         return global_scores, instance_scores
 
 
-def create_unitxt_yaml(yaml_file, unitxt_recipe, task_name):
-    data = {"task": f"{task_name}", "include": "unitxt", "recipe": f"{unitxt_recipe}"}
+def create_unitxt_yaml(yaml_file: str, unitxt_recipe: str, task_name: str) -> None:
+    data = {"task": task_name, "include": "unitxt", "recipe": unitxt_recipe}
     with open(yaml_file, "w", encoding="utf-8") as file:
         yaml.dump(data, file, default_flow_style=False)
     logger.debug("task %s unitxt recipe written to %s", task_name, yaml_file)

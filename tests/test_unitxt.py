@@ -9,7 +9,7 @@ def test_unitxt():
         unitxt_recipe = "card=cards.wnli,template=templates.classification.multi_class.relation.default,max_train_instances=5,loader_limit=20,num_demos=3,demos_pool_size=10"
         unitxt = UnitxtEvaluator(model_path=model_path, unitxt_recipe=unitxt_recipe)
         overall_score, single_scores = unitxt.run()
-        print(overall_score)
+        print(f"Overall scores: {overall_score}")
         sample_score = "f1_micro,none"
         assert sample_score in overall_score
         assert overall_score[sample_score] > 0
