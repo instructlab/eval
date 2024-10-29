@@ -108,11 +108,12 @@ def generate_answers(
     max_tokens=1024,
     max_workers=1,
     bench_name="mt_bench",
+    http_client=None,
 ):
     """Generate model answers to be judged"""
     logger.debug(locals())
 
-    openai_client = get_openai_client(model_api_base, api_key)
+    openai_client = get_openai_client(model_api_base, api_key, http_client)
 
     if data_dir is None:
         data_dir = os.path.join(os.path.dirname(__file__), "data")
