@@ -27,6 +27,8 @@ from .logger_config import setup_logger
 
 logger = setup_logger(__name__)
 
+MIN_WORKERS_PER_GPU = 10
+
 
 class AbstractMTBenchEvaluator(Evaluator):
     """
@@ -66,7 +68,7 @@ class AbstractMTBenchEvaluator(Evaluator):
                     # Tune max_workers based on hardware configuration: min(#GPUs being used * 10, #CPU cores)
                     # Please see https://github.com/instructlab/instructlab/issues/2050 for detailed explanation
                     calculated_max_workers = min(
-                        max(serving_gpus, 1) * 10, usable_cpu_count
+                        max(serving_gpus, 1) * MIN_WORKERS_PER_GPU, usable_cpu_count
                     )
                     logger.debug(
                         "Auto tuning max_workers to %s", calculated_max_workers
@@ -90,7 +92,7 @@ class AbstractMTBenchEvaluator(Evaluator):
         if max_workers is not None:
             effective_max_workers = self._calc_max_workers(max_workers, serving_gpus)
         else:
-            effective_max_workers = self.max_workers
+            effective_max_workers = MIN_WORKERS_PER_GPU
         return effective_max_workers
 
 

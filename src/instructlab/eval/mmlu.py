@@ -149,7 +149,7 @@ class AbstractMMLUEvaluator(Evaluator):
                 "stderr": float(result["acc_stderr,none"]),
             }
 
-        overall_score = float(agg_score / len(self.tasks))
+        overall_score = float(agg_score / len(individual_scores))
 
         return overall_score, individual_scores
 
