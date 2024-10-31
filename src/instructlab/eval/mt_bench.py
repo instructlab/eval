@@ -10,6 +10,9 @@ https://arxiv.org/html/2306.05685
 import multiprocessing
 import os
 
+# Third Party
+import httpx
+
 # First Party
 from instructlab.eval import (
     mt_bench_answers,
@@ -110,6 +113,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
         api_key: str | None = None,
         max_workers: int | str | None = None,
         serving_gpus: int | None = None,
+        http_client: httpx.Client | None = None,
     ) -> None:
         """
         Asks questions to model
@@ -119,6 +123,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             api_key         API token for authenticating with model server
             max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
+            http_client     Custom http client to use for requests
         """
         logger.debug(locals())
         mt_bench_answers.generate_answers(
@@ -127,6 +132,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             api_key=api_key,
             output_dir=self.output_dir,
             max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
+            http_client=http_client,
         )
 
     def judge_answers(
@@ -135,6 +141,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
         api_key: str | None = None,
         max_workers: int | str | None = None,
         serving_gpus: int | None = None,
+        http_client: httpx.Client | None = None,
     ) -> tuple:
         """
         Runs MT-Bench judgment
@@ -144,6 +151,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             api_key         API token for authenticating with model server
             max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
+            http_client     Custom http client to use for requests
 
         Returns:
             overall_score   MT-Bench score for the overall model evaluation
@@ -160,6 +168,7 @@ class MTBenchEvaluator(AbstractMTBenchEvaluator):
             max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
             output_dir=self.output_dir,
             merge_system_user_message=self.merge_system_user_message,
+            http_client=http_client,
         )
 
 
@@ -202,6 +211,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         api_key: str | None = None,
         max_workers: int | str | None = None,
         serving_gpus: int | None = None,
+        http_client: httpx.Client | None = None,
     ) -> None:
         """
         Asks questions to model
@@ -211,6 +221,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             api_key     API token for authenticating with model server
             max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
+            http_client     Custom http client to use for requests
         """
         logger.debug(locals())
         mt_bench_branch_generator.generate(
@@ -228,6 +239,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             data_dir=self.output_dir,
             max_workers=self._get_effective_max_workers(max_workers, serving_gpus),
             bench_name="mt_bench_branch",
+            http_client=http_client,
         )
 
     def judge_answers(
@@ -236,6 +248,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
         api_key: str | None = None,
         max_workers: int | str | None = None,
         serving_gpus: int | None = None,
+        http_client: httpx.Client | None = None,
     ) -> tuple:
         """
         Runs MT-Bench-Branch judgment.  Judgments can be compared across runs with consistent question_id -> qna file name.
@@ -245,6 +258,7 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             api_key         API token for authenticating with model server
             max_workers     Max parallel workers to run the evaluation with (int or "auto").  None indicates to use value specified in constructor.
             serving_gpus    Number of gpus allocated for serving.  Used to tune with max_workers=auto.  None indicates to use value specified in constructor.
+            http_client     Custom http client to use for requests
 
         Returns:
             overall_score   Overall score from the evaluation
@@ -263,5 +277,6 @@ class MTBenchBranchEvaluator(AbstractMTBenchEvaluator):
             data_dir=self.output_dir,
             bench_name="mt_bench_branch",
             merge_system_user_message=self.merge_system_user_message,
+            http_client=http_client,
         )
         return overall_score, qa_pairs, error_rate

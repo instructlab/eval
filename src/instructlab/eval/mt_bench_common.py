@@ -13,6 +13,7 @@ import re
 import time
 
 # Third Party
+import httpx
 import openai
 
 # First Party
@@ -365,8 +366,14 @@ def get_model_list(answer_file):
     return [os.path.splitext(os.path.basename(answer_file))[0]]
 
 
-def get_openai_client(model_api_base, api_key):
+def get_openai_client(
+    model_api_base,
+    api_key,
+    http_client: httpx.Client | None = None,
+):
     if api_key is None:
         api_key = "NO_API_KEY"
-    openai_client = openai.OpenAI(base_url=model_api_base, api_key=api_key)
+    openai_client = openai.OpenAI(
+        base_url=model_api_base, api_key=api_key, http_client=http_client
+    )
     return openai_client

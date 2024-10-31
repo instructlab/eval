@@ -286,11 +286,12 @@ def generate_judgment(
     max_workers=1,
     first_n=None,
     merge_system_user_message=False,
+    http_client=None,
 ):
     """Generate judgment with scores and qa_pairs for a model"""
     logger.debug(locals())
 
-    openai_client = get_openai_client(model_api_base, api_key)
+    openai_client = get_openai_client(model_api_base, api_key, http_client)
 
     first_n_env = os.environ.get("INSTRUCTLAB_EVAL_FIRST_N_QUESTIONS")
     if first_n_env is not None and first_n is None:

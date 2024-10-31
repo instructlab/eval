@@ -10,6 +10,7 @@ dr
 eval
 gpt
 hoc
+http
 instructlab
 jsonl
 justfile
