@@ -54,3 +54,9 @@ spellcheck-sort: .spellcheck-en-custom.txt ## Sort spellcheck directory
 .PHONY: verify
 verify: check-tox ## Run linting, typing, and formatting checks via tox
 	tox p -e fastlint,mypy,ruff
+
+##@ Development
+
+.PHONY: tests
+tests: check-tox ## Run unit and type checks
+	tox -e py3-unit,mypy
