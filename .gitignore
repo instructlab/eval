@@ -54,6 +54,10 @@ coverage.xml
 .pytest_cache/
 cover/
 
+# Functional tests
+mt_bench_branch_generator/*
+eval_output/*
+
 # Translations
 *.mo
 *.pot
