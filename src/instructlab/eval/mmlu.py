@@ -142,7 +142,7 @@ class AbstractMMLUEvaluator(Evaluator):
         agg_score: float = 0.0
 
         results = self._run_mmlu(server_url)
-        for task, result in results['results'].items():
+        for task, result in results["results"].items():
             agg_score += float(result["acc,none"])
             individual_scores[task] = {
                 "score": float(result["acc,none"]),
@@ -153,9 +153,7 @@ class AbstractMMLUEvaluator(Evaluator):
 
         return overall_score, individual_scores
 
-    def _run_mmlu(
-        self, server_url: str | None = None
-    ) -> dict:
+    def _run_mmlu(self, server_url: str | None = None) -> dict:
         if server_url is not None:
             # Requires lm_eval >= 0.4.4
             model_args = f"base_url={server_url}/completions,model={self.model_path},tokenizer_backend=huggingface"
