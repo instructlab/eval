@@ -51,7 +51,7 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         self.unitxt_recipe = unitxt_recipe
 
     def assign_tasks_dir(self, task_name):
-        return f"{TEMP_DIR_PREFIX}_{task_name}"
+        return os.path.join("eval_output", f"{TEMP_DIR_PREFIX}_{task_name}")
 
     def assign_task_name(self):
         return str(uuid4())
@@ -90,28 +90,30 @@ class UnitxtEvaluator(MMLUBranchEvaluator):
         self.prepare_unitxt_files()
         logger.debug(locals())
         os.environ["TOKENIZERS_PARALLELISM"] = "true"
-        results = self._run_mmlu(server_url=server_url)
-        taskname = self.tasks[0]
-        global_scores = results["results"][taskname]
-        global_scores.pop("alias")
         try:
-            instances = results["samples"][taskname]
-            instance_scores = {}
-            metrics = [
-                metric.replace("metrics.", "")
-                for metric in instances[0]["doc"]["metrics"]
-            ]
-            for i, instance in enumerate(instances):
-                scores = {}
-                for metric in metrics:
-                    scores[metric] = instance[metric][0]
-                instance_scores[i] = scores
-        except KeyError as e:
-            logger.error("Error in extracting single instance scores")
-            logger.error(e)
-            logger.error(e.__traceback__)
-            instance_scores = None
-        self.remove_unitxt_files()
+            results = self._run_mmlu(server_url=server_url)
+            taskname = self.tasks[0]
+            global_scores = results["results"][taskname]
+            global_scores.pop("alias")
+            try:
+                instances = results["samples"][taskname]
+                instance_scores = {}
+                metrics = [
+                    metric.replace("metrics.", "")
+                    for metric in instances[0]["doc"]["metrics"]
+                ]
+                for i, instance in enumerate(instances):
+                    scores = {}
+                    for metric in metrics:
+                        scores[metric] = instance[metric][0]
+                    instance_scores[i] = scores
+            except KeyError as e:
+                logger.error("Error in extracting single instance scores")
+                logger.error(e)
+                logger.error(e.__traceback__)
+                instance_scores = None
+        finally:
+            self.remove_unitxt_files()
         return global_scores, instance_scores
 
 
