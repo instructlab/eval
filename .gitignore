@@ -48,11 +48,14 @@ htmlcov/
 .cache
 nosetests.xml
 coverage.xml
+coverage-py3-*
+coverage
 *.cover
 *.py,cover
 .hypothesis/
 .pytest_cache/
 cover/
+durations/*
 
 # Translations
 *.mo
