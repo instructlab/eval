@@ -124,6 +124,18 @@ class InvalidTasksDirError(EvalError):
         self.message = f"Invalid Tasks Dir: {tasks_dir}"
 
 
+class InvalidEvaluationResult(EvalError):
+    """
+    Error raised for invalid eval results
+    Attributes
+        message         error message to be printed on raise
+    """
+
+    def __init__(self, message) -> None:
+        super().__init__()
+        self.message = message
+
+
 class ModelServingAPIError(EvalError):
     """
     Error raised when reply retrieval from model serving fails.

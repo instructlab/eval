@@ -8,6 +8,9 @@ from tqdm import tqdm
 import numpy as np
 import pandas as pd
 
+# First Party
+from instructlab.eval import exceptions
+
 # Local
 from .logger_config import setup_logger
 from .mt_bench_common import (
@@ -97,8 +100,13 @@ def make_judgment(
     turn_scores = []
     # First turn
     df_1 = judgment_df[judgment_df["turn"] == 1].groupby(["model", "turn"]).mean()
-    overall_score = df_1["score"].iloc[0]
-    turn_scores.append(overall_score)
+    if len(df_1.index) > 0:
+        overall_score = df_1["score"].iloc[0]
+        turn_scores.append(overall_score)
+    else:
+        raise exceptions.InvalidEvaluationResult(
+            "Evaluation provided no result. See logs for more details."
+        )
 
     if bench_name == "mt_bench":
         # Second turn
