@@ -26,16 +26,19 @@ logger = setup_logger(__name__)
 def reorg_answer_file(answer_file):
     """Sort by question id and de-duplication"""
     logger.debug(locals())
-    answers = {}
-    with open(answer_file, "r", encoding="utf-8") as fin:
-        for l in fin:
+    with open(answer_file, "r+", encoding="utf-8") as f:
+        answers = {}
+        for l in f:
             qid = json.loads(l)["question_id"]
             answers[qid] = l
 
-    qids = sorted(list(answers.keys()))
-    with open(answer_file, "w", encoding="utf-8") as fout:
+        # Reset to the beginning of the file and clear it
+        f.seek(0)
+        f.truncate()
+
+        qids = sorted(list(answers.keys()))
         for qid in qids:
-            fout.write(answers[qid])
+            f.write(answers[qid])
 
 
 def get_answer(
