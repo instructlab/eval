@@ -142,7 +142,7 @@ class AbstractMMLUEvaluator(Evaluator):
         agg_score: float = 0.0
 
         results = self._run_mmlu(server_url)
-        for task, result in results.items():
+        for task, result in results["results"].items():
             agg_score += float(result["acc,none"])
             individual_scores[task] = {
                 "score": float(result["acc,none"]),
@@ -177,8 +177,7 @@ class AbstractMMLUEvaluator(Evaluator):
             device=self.device,
             task_manager=tm,
         )
-        results = mmlu_output["results"]
-        return results
+        return mmlu_output
 
     # This method converts general errors from simple_evaluate
     # into a more user-understandable error
