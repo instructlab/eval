@@ -102,6 +102,7 @@ class AbstractMMLUEvaluator(Evaluator):
         few_shots       number of examples
         batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        system_prompt   system prompt to be used when applying the chat template
     """
 
     def __init__(
@@ -113,8 +114,10 @@ class AbstractMMLUEvaluator(Evaluator):
         few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+        system_prompt: Optional[str] = None,
     ) -> None:
         self.model_path = model_path
+        self.system_prompt = system_prompt
         self.tasks_dir = tasks_dir
         self.tasks = tasks
         self.model_dtype = model_dtype
@@ -168,6 +171,7 @@ class AbstractMMLUEvaluator(Evaluator):
             if not os.access(self.tasks_dir, os.R_OK):
                 raise InvalidTasksDirError(self.tasks_dir)
             tm = TaskManager(verbosity="DEBUG", include_path=self.tasks_dir)
+        should_apply_chat_template = self.system_prompt is not None
         mmlu_output = self._simple_evaluate_with_error_handling(
             model=model,
             model_args=model_args,
@@ -176,6 +180,8 @@ class AbstractMMLUEvaluator(Evaluator):
             batch_size=self.batch_size,
             device=self.device,
             task_manager=tm,
+            system_instruction=self.system_prompt,
+            apply_chat_template=should_apply_chat_template,
         )
         results = mmlu_output["results"]
         return results
@@ -213,12 +219,13 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
     Evaluator for Massive Multitask Language Understanding (MMLU)
 
     Attributes:
-        model_path   absolute path to or name of a huggingface model
-        tasks        list of tasks for MMLU to test the model with
-        model_dtype  dtype of model when served
-        few_shots    number of examples
-        batch_size   batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
-        device       PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        model_path      absolute path to or name of a huggingface model
+        tasks           list of tasks for MMLU to test the model with
+        model_dtype     dtype of model when served
+        few_shots       number of examples
+        batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
+        device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        system_prompt   system prompt to be used when applying the chat template
     """
 
     name = "mmlu"
@@ -231,9 +238,17 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+        system_prompt: Optional[str] = None,
     ) -> None:
         super().__init__(
-            model_path, None, tasks, model_dtype, few_shots, batch_size, device
+            model_path,
+            None,
+            tasks,
+            model_dtype,
+            few_shots,
+            batch_size,
+            device,
+            system_prompt=system_prompt,
         )
 
 
@@ -243,6 +258,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
 
     Attributes:
         model_path      absolute path to or name of a huggingface model
+        system_prompt   system prompt to be used when applying the chat template
         tasks_dir       path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
         tasks           group name that is shared by all the MMLUBranch tasks
         model_dtype     dtype of model when served
