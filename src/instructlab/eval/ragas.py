@@ -1,3 +1,4 @@
+# # SPDX-License-Identifier: Apache-2.0
 # Standard
 from pathlib import Path
 from typing import List, Optional, TypedDict
@@ -53,7 +54,7 @@ class ModelConfig(BaseModel):
 
     # name of the model to use.
     model_name: str
-    
+
     # The system prompt to be used when applying the chat template.
     system_prompt: str = _DEFAULT_SYSTEM_PROMPT
 
@@ -67,7 +68,7 @@ class ModelConfig(BaseModel):
     # Max amount of tokens to generate.
     max_tokens: int = 768
 
-    # Random seed for reproducibility. Caution: this isn't supported by all model serving runtimes. 
+    # Random seed for reproducibility. Caution: this isn't supported by all model serving runtimes.
     seed: int = DEFAULT_SEED
 
     @field_validator("temperature")
@@ -126,15 +127,14 @@ class RagasEvaluator(Evaluator):
                 "no dataset was provided, please specify the `dataset` argument"
             )
 
-        if type(dataset) not in (list, Path):
-            raise TypeError(f"invalid type of dataset: {type(dataset)}")
-
         # ensure we are in the dataframe format
         input_df = None
         if isinstance(dataset, list):
             input_df = DataFrame(dataset)
         elif isinstance(dataset, Path):
             input_df = read_json(dataset, orient="records", lines=True)
+        else:
+            raise TypeError(f"invalid type of dataset: {type(dataset)}")
 
         # this should never happen, but pylint is not smart enough to detect it
         assert input_df is not None
