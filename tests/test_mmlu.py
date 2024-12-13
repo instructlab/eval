@@ -48,7 +48,10 @@ def test_mmlu_branch(eval_mock):
     tasks_dir = f"{os.path.dirname(os.path.realpath(__file__))}/testdata/sdg"
     tasks = ["mmlu_pr"]
     mmlu = MMLUBranchEvaluator(
-        model_path=MODEL_EXAMPLE, tasks_dir=tasks_dir, tasks=tasks
+        model_path=MODEL_EXAMPLE,
+        tasks_dir=tasks_dir,
+        tasks=tasks,
+        system_prompt="You are an intelligent AI language model.",
     )
     overall_score, individual_scores = mmlu.run()
 
@@ -62,7 +65,11 @@ def test_mmlu_branch(eval_mock):
 )
 def test_mmlu(eval_mock):
     tasks = ["mmlu_anatomy", "mmlu_astronomy", "mmlu_algebra"]
-    mmlu = MMLUEvaluator(model_path=MODEL_EXAMPLE, tasks=tasks)
+    mmlu = MMLUEvaluator(
+        model_path=MODEL_EXAMPLE,
+        tasks=tasks,
+        system_prompt="You are an intelligent AI language model.",
+    )
     overall_score, individual_scores = mmlu.run()
 
     eval_mock.assert_called()
