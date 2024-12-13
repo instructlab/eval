@@ -7,12 +7,12 @@ https://arxiv.org/abs/2009.03300
 """
 
 # Standard
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import os
 
 # Third Party
-from lm_eval.evaluator import simple_evaluate  # type: ignore
-from lm_eval.tasks import TaskManager  # type: ignore
+from lm_eval.evaluator import simple_evaluate
+from lm_eval.tasks import TaskManager
 import torch
 
 # First Party
@@ -102,6 +102,8 @@ class AbstractMMLUEvaluator(Evaluator):
         few_shots       number of examples
         batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        system_prompt   system prompt to be used when applying the chat template
+        results         full output from the `lm_eval.evaluator.simple_evaluate` function after MMLU has run.
     """
 
     def __init__(
@@ -113,26 +115,43 @@ class AbstractMMLUEvaluator(Evaluator):
         few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+        system_prompt: Optional[str] = None,
     ) -> None:
         self.model_path = model_path
+        self.system_prompt = system_prompt
         self.tasks_dir = tasks_dir
         self.tasks = tasks
         self.model_dtype = model_dtype
         self.few_shots = few_shots
         self.batch_size = batch_size
         self.device = device
+        self._results = None
 
-    def run(self, server_url: str | None = None) -> tuple:
+    @property
+    def results(self) -> Dict[str, Any] | None:
+        """
+        Returns the results of the last MMLU evaluation, if one has taken place.
+
+        Returns:
+            Dict[str, Any] | None: The output from `lm_eval.evaluator.simple_evaluate`
+        """
+        return self._results
+
+    def run(
+        self, server_url: str | None = None, extra_args: Dict[str, Any] | None = None
+    ) -> tuple:
         """
         Runs evaluation
 
         Attributes
             server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+            extra_args          Dictionary containing any extra arguments to be passed into the lm_eval `lm_eval.evaluator.simple_evaluate` function.
 
         Returns:
             overall_score       Average score for the task group
             individual_scores   Individual scores for each task in the task group
         """
+        extra_args = {} if not extra_args else extra_args
         logger.debug(locals())
 
         # TODO: make this a parameter for class?
@@ -153,7 +172,10 @@ class AbstractMMLUEvaluator(Evaluator):
 
         return overall_score, individual_scores
 
-    def _run_mmlu(self, server_url: str | None = None) -> dict:
+    def _run_mmlu(
+        self, server_url: str | None = None, extra_args: Dict[str, Any] | None = None
+    ) -> dict:
+        extra_args = {} if not extra_args else extra_args
         if server_url is not None:
             # Requires lm_eval >= 0.4.4
             model_args = f"base_url={server_url}/completions,model={self.model_path},tokenizer_backend=huggingface"
@@ -168,17 +190,25 @@ class AbstractMMLUEvaluator(Evaluator):
             if not os.access(self.tasks_dir, os.R_OK):
                 raise InvalidTasksDirError(self.tasks_dir)
             tm = TaskManager(verbosity="DEBUG", include_path=self.tasks_dir)
-        mmlu_output = self._simple_evaluate_with_error_handling(
-            model=model,
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            device=self.device,
-            task_manager=tm,
-        )
-        results = mmlu_output["results"]
-        return results
+        should_apply_chat_template = self.system_prompt is not None
+
+        # configure the args here so users can override them as necessary
+        simple_evaluate_kwargs = {
+            "model": model,
+            "model_args": model_args,
+            "tasks": self.tasks,
+            "num_fewshot": self.few_shots,
+            "batch_size": self.batch_size,
+            "device": self.device,
+            "task_manager": tm,
+            "system_instruction": self.system_prompt,
+            "apply_chat_template": should_apply_chat_template,
+        }
+        simple_evaluate_kwargs.update(extra_args)
+
+        results = self._simple_evaluate_with_error_handling(**simple_evaluate_kwargs)
+        self._results = results
+        return results["results"]
 
     # This method converts general errors from simple_evaluate
     # into a more user-understandable error
@@ -213,12 +243,13 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
     Evaluator for Massive Multitask Language Understanding (MMLU)
 
     Attributes:
-        model_path   absolute path to or name of a huggingface model
-        tasks        list of tasks for MMLU to test the model with
-        model_dtype  dtype of model when served
-        few_shots    number of examples
-        batch_size   batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
-        device       PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        model_path      absolute path to or name of a huggingface model
+        tasks           list of tasks for MMLU to test the model with
+        model_dtype     dtype of model when served
+        few_shots       number of examples
+        batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
+        device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
+        system_prompt   system prompt to be used when applying the chat template
     """
 
     name = "mmlu"
@@ -231,9 +262,17 @@ class MMLUEvaluator(AbstractMMLUEvaluator):
         few_shots: int = 5,
         batch_size: Optional[Union[int, str]] = "auto",
         device: str = ("cuda" if torch.cuda.is_available() else "cpu"),
+        system_prompt: Optional[str] = None,
     ) -> None:
         super().__init__(
-            model_path, None, tasks, model_dtype, few_shots, batch_size, device
+            model_path,
+            None,
+            tasks,
+            model_dtype,
+            few_shots,
+            batch_size,
+            device,
+            system_prompt=system_prompt,
         )
 
 
@@ -243,6 +282,7 @@ class MMLUBranchEvaluator(AbstractMMLUEvaluator):
 
     Attributes:
         model_path      absolute path to or name of a huggingface model
+        system_prompt   system prompt to be used when applying the chat template
         tasks_dir       path where the <TASK_NAME>.jsonl and <TASK_NAME>_task.yaml files for the branches being evaluated are stored
         tasks           group name that is shared by all the MMLUBranch tasks
         model_dtype     dtype of model when served
