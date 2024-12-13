@@ -7,12 +7,12 @@ https://arxiv.org/abs/2009.03300
 """
 
 # Standard
-from typing import Optional, Union
+from typing import Any, Dict, Optional, Union
 import os
 
 # Third Party
-from lm_eval.evaluator import simple_evaluate  # type: ignore
-from lm_eval.tasks import TaskManager  # type: ignore
+from lm_eval.evaluator import simple_evaluate
+from lm_eval.tasks import TaskManager
 import torch
 
 # First Party
@@ -103,6 +103,7 @@ class AbstractMMLUEvaluator(Evaluator):
         batch_size      batch size for evaluation. Valid values are a positive integer or 'auto' to select the largest batch size that will fit in memory, or 'auto:N' to reselect the largest batch size N times'.
         device          PyTorch device (e.g. "cpu" or "cuda:0") for running models
         system_prompt   system prompt to be used when applying the chat template
+        results         full output from the `lm_eval.evaluator.simple_evaluate` function after MMLU has run.
     """
 
     def __init__(
@@ -124,18 +125,33 @@ class AbstractMMLUEvaluator(Evaluator):
         self.few_shots = few_shots
         self.batch_size = batch_size
         self.device = device
+        self._results = None
 
-    def run(self, server_url: str | None = None) -> tuple:
+    @property
+    def results(self) -> Dict[str, Any] | None:
+        """
+        Returns the results of the last MMLU evaluation, if one has taken place.
+
+        Returns:
+            Dict[str, Any] | None: The output from `lm_eval.evaluator.simple_evaluate`
+        """
+        return self._results
+
+    def run(
+        self, server_url: str | None = None, extra_args: Dict[str, Any] | None = None
+    ) -> tuple:
         """
         Runs evaluation
 
         Attributes
             server_url          Model server endpoint (Ex: http://localhost:8000/v1) for the model being evaluated
+            extra_args          Dictionary containing any extra arguments to be passed into the lm_eval `lm_eval.evaluator.simple_evaluate` function.
 
         Returns:
             overall_score       Average score for the task group
             individual_scores   Individual scores for each task in the task group
         """
+        extra_args = {} if not extra_args else extra_args
         logger.debug(locals())
 
         # TODO: make this a parameter for class?
@@ -156,7 +172,10 @@ class AbstractMMLUEvaluator(Evaluator):
 
         return overall_score, individual_scores
 
-    def _run_mmlu(self, server_url: str | None = None) -> dict:
+    def _run_mmlu(
+        self, server_url: str | None = None, extra_args: Dict[str, Any] | None = None
+    ) -> dict:
+        extra_args = {} if not extra_args else extra_args
         if server_url is not None:
             # Requires lm_eval >= 0.4.4
             model_args = f"base_url={server_url}/completions,model={self.model_path},tokenizer_backend=huggingface"
@@ -172,19 +191,24 @@ class AbstractMMLUEvaluator(Evaluator):
                 raise InvalidTasksDirError(self.tasks_dir)
             tm = TaskManager(verbosity="DEBUG", include_path=self.tasks_dir)
         should_apply_chat_template = self.system_prompt is not None
-        mmlu_output = self._simple_evaluate_with_error_handling(
-            model=model,
-            model_args=model_args,
-            tasks=self.tasks,
-            num_fewshot=self.few_shots,
-            batch_size=self.batch_size,
-            device=self.device,
-            task_manager=tm,
-            system_instruction=self.system_prompt,
-            apply_chat_template=should_apply_chat_template,
-        )
-        results = mmlu_output["results"]
-        return results
+
+        # configure the args here so users can override them as necessary
+        simple_evaluate_kwargs = {
+            "model": model,
+            "model_args": model_args,
+            "tasks": self.tasks,
+            "num_fewshot": self.few_shots,
+            "batch_size": self.batch_size,
+            "device": self.device,
+            "task_manager": tm,
+            "system_instruction": self.system_prompt,
+            "apply_chat_template": should_apply_chat_template,
+        }
+        simple_evaluate_kwargs.update(extra_args)
+
+        results = self._simple_evaluate_with_error_handling(**simple_evaluate_kwargs)
+        self._results = results
+        return results["results"]
 
     # This method converts general errors from simple_evaluate
     # into a more user-understandable error
