@@ -5,6 +5,7 @@ from typing import List, Optional, TypedDict
 
 # Third Party
 from langchain_community.chat_models import ChatOpenAI
+from openai import Client as OpenAIClient
 from pandas import DataFrame, read_json
 from pydantic import BaseModel, ConfigDict, field_validator
 from ragas.evaluation import EvaluationDataset, EvaluationResult, RunConfig, evaluate
@@ -16,7 +17,6 @@ from ragas.metrics._domain_specific_rubrics import (  # the rubrics we must inst
 
 # Local
 from .evaluator import Evaluator
-from .mt_bench_common import get_openai_client
 
 
 class Sample(TypedDict):
@@ -49,18 +49,11 @@ DEFAULT_JUDGE_MODEL = "gpt-4o"
 class ModelConfig(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
-    # URL of the OpenAI server where the model shall be hosted.
-    base_url: str
-
     # name of the model to use.
     model_name: str
 
     # The system prompt to be used when applying the chat template.
     system_prompt: str = _DEFAULT_SYSTEM_PROMPT
-
-    # We do NOT read from OPENAI_API_KEY for the student model for security reasons (e.g. sending the API key to another client)
-    # To provide an OpenAI key, you must set it here; else the default is used.
-    api_key: str = "no-api-key"
 
     # "model randomness" aka likelihood of sampling something other than the likeliest token
     temperature: float = 0.0
@@ -87,15 +80,18 @@ class RagasEvaluator(Evaluator):
         self,
         student_model: ModelConfig | None = None,
         run_config: RunConfig | None = None,
+        openai_client: OpenAIClient | None = None,
     ):
         self.student_model = student_model
         self.run_config = run_config
+        self.openai_client = openai_client
 
     def run(
         self,
         dataset: List[Sample] | Path,
         student_model: ModelConfig | None = None,
         run_config: RunConfig | None = None,
+        openai_client: OpenAIClient | None = None,
     ) -> EvaluationResult:
         """
         Evaluates the quality of model responses against a graded rubric.
@@ -115,12 +111,16 @@ class RagasEvaluator(Evaluator):
                 a default one is created containing extremely permissive settings when handling
                 timeouts. This is because by default, OpenAI tier-1 usage accounts have very high
                 rate limits resulting in heavy throttling during evaluations.
+            openai_client (openai.Client | None, optional):
+                The client to use when generating questions from the student model, must be compatible with the OpenAI API.
+                This field is required when `student_model` is provided.
 
         Returns:
             EvaluationResult: The results of all evaluations performed by Ragas
         """
         student_model = student_model if student_model else self.student_model
         run_config = run_config if run_config else self.run_config
+        openai_client = openai_client if openai_client else self.openai_client
 
         if not dataset:
             raise ValueError(
@@ -140,14 +140,20 @@ class RagasEvaluator(Evaluator):
         assert input_df is not None
 
         need_to_generate_questions = "response" not in input_df.columns
-        if need_to_generate_questions and not student_model:
+        if need_to_generate_questions and (not student_model or not openai_client):
             raise ValueError(
-                "provided dataset doesn't contain the model `response`, but no `student_model` was provided for inference"
+                "provided dataset doesn't contain the model `response`, but either `student_model` or `openai_client` wasn't provided for inference"
             )
 
         # if the student model was provided then we always generate regardless
         if student_model:
-            input_df = self._generate_answers_from_model(input_df, student_model)
+            if not openai_client:
+                raise ValueError(
+                    "`student_model` was specified but `openai_client` was not provided"
+                )
+            input_df = self._generate_answers_from_model(
+                input_df, student_model, openai_client
+            )
 
         if not run_config:
             # we set extreme timeout/retry values by default since OpenAI tier-1 rate limits
@@ -176,16 +182,15 @@ class RagasEvaluator(Evaluator):
         return results
 
     def _generate_answers_from_model(
-        self, questions: DataFrame, student_model: ModelConfig
+        self,
+        questions: DataFrame,
+        student_model: ModelConfig,
+        openai_client: OpenAIClient,
     ) -> DataFrame:
         """
         Given a DataFrame containing `user_input` columns, generates responses from the given model
         and returns a new DataFrame containing its answers in the `response` column.
         """
-        client = get_openai_client(
-            model_api_base=student_model.base_url, api_key=student_model.api_key
-        )
-
         # initialize response to write into
         updated_df = questions.copy()
         updated_df["response"] = ""
@@ -195,7 +200,7 @@ class RagasEvaluator(Evaluator):
                 student_model.system_prompt,
                 qna["user_input"],
             ]
-            response = client.chat.completions.create(
+            response = openai_client.chat.completions.create(
                 messages=messages,
                 model=student_model.model_name,
                 # specify the seed so we can at least try to have some reproducibility when the clients support it

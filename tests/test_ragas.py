@@ -11,58 +11,55 @@ from ragas.dataset_schema import EvaluationDataset, EvaluationResult
 import pandas as pd
 
 # First Party
-from instructlab.eval.ragas import ModelConfig, RagasEvaluator, RunConfig, Sample
+from instructlab.eval.ragas import ModelConfig, RagasEvaluator, RunConfig
 
 
 class TestRagasEvaluator(unittest.TestCase):
-    @patch("instructlab.eval.ragas.get_openai_client")
-    def test_generate_answers_from_model(self, mock_get_openai_client):
+    def test_generate_answers_from_model(self):
         # mock the OpenAI client to always return "london" for chat completions
+        user_input = "What is the capital of France?"
+        model_response = "London"
         mock_client = MagicMock()
         mock_response = MagicMock()
-        mock_response.choices[0].message.content = "London"
+        mock_response.choices = [MagicMock(message=MagicMock(content=model_response))]
         mock_client.chat.completions.create.return_value = mock_response
-        mock_get_openai_client.return_value = mock_client
 
         # get answers
-        questions = pd.DataFrame({"user_input": ["What is the capital of France?"]})
+        questions = pd.DataFrame({"user_input": [user_input]})
         student_model = ModelConfig(
-            base_url="https://your.model.endpoint.com",
-            model_name="jeeves-512B",
-            api_key="test-api-key",
+            model_name="super-jeeves-8x700B",
         )
         evaluator = RagasEvaluator()
-        result_df = evaluator._generate_answers_from_model(questions, student_model)
+        result_df = evaluator._generate_answers_from_model(
+            questions, student_model, mock_client
+        )
 
         # what we expect to see
         expected_df = questions.copy()
-        expected_df["response"] = ["London"]
+        expected_df["response"] = [model_response]
 
         # perform the assertions
         pd.testing.assert_frame_equal(result_df, expected_df)
-        mock_get_openai_client.assert_called_once_with(
-            model_api_base=student_model.base_url, api_key=student_model.api_key
-        )
         mock_client.chat.completions.create.assert_called_once_with(
-            messages=[student_model.system_prompt, "What is the capital of France?"],
+            messages=[student_model.system_prompt, user_input],
             model=student_model.model_name,
             seed=42,
             max_tokens=student_model.max_tokens,
             temperature=student_model.temperature,
         )
 
+    @patch("instructlab.eval.ragas.ChatOpenAI")
     @patch("instructlab.eval.ragas.read_json")
     @patch("instructlab.eval.ragas.evaluate")
-    @patch("instructlab.eval.ragas.ChatOpenAI")
     @patch.object(RagasEvaluator, "_generate_answers_from_model")
     @patch.object(RagasEvaluator, "_get_metrics")
     def test_run(
         self,
         mock_get_metrics: MagicMock,
         mock_generate_answers_from_model: MagicMock,
-        mock_ChatOpenAI: MagicMock,
         mock_evaluate: MagicMock,
         mock_read_json: MagicMock,
+        mock_ChatOpenAI: MagicMock,
     ):
         ########################################################################
         # SETUP EVERYTHING WE NEED FOR THE TESTS
@@ -74,16 +71,20 @@ class TestRagasEvaluator(unittest.TestCase):
         student_model_response = "Paris"
         user_question = "What is the capital of France?"
         golden_answer = "The capital of France is Paris."
+        metric = "mocked-metric"
+        metric_score = 4.0
         base_ds = [{"user_input": user_question, "reference": golden_answer}]
-        mocked_metric = "mocked-metric"
-        mocked_metric_score = 4.0
+        student_model = ModelConfig(
+            model_name="super-jeeves-8x700B",
+        )
+        run_config = RunConfig(max_retries=3, max_wait=60, seed=42, timeout=30)
 
         # The following section takes care of mocking function return calls.
         # Ragas is tricky because it has some complex data structures under the hood,
         # so what we have to do is configure the intermediate outputs that we expect
         # to receive from Ragas.
 
-        mock_get_metrics.return_value = [mocked_metric]
+        mock_get_metrics.return_value = [metric]
         interim_df = DataFrame(
             {
                 "user_input": [user_question],
@@ -93,7 +94,12 @@ class TestRagasEvaluator(unittest.TestCase):
         )
         mock_generate_answers_from_model.return_value = interim_df.copy()
         mocked_evaluation_ds = EvaluationDataset.from_pandas(interim_df)
-        mock_ChatOpenAI.return_value = MagicMock()
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.choices = [
+            MagicMock(message=MagicMock(content=student_model_response))
+        ]
+        mock_client.chat.completions.create.return_value = mock_response
 
         # Ragas requires this value to instantiate an EvaluationResult object, so we must provide it.
         # It isn't functionally used for our purposes though.
@@ -109,29 +115,20 @@ class TestRagasEvaluator(unittest.TestCase):
             )
         }
         mock_evaluate.return_value = EvaluationResult(
-            scores=[{mocked_metric: mocked_metric_score}],
+            scores=[{metric: metric_score}],
             dataset=mocked_evaluation_ds,
             ragas_traces=_unimportant_ragas_traces,
         )
 
         ########################################################################
-        # Run the tests
-        ########################################################################
-
-        # Configure all other inputs that Ragas does not depend on for proper mocking
-        student_model = ModelConfig(
-            base_url="https://api.openai.com",
-            model_name="pt-3.5-turbo",
-            api_key="test-api-key",
-        )
-        run_config = RunConfig(max_retries=3, max_wait=60, seed=42, timeout=30)
-        evaluator = RagasEvaluator()
-
-        ########################################################################
         # Test case: directly passing a dataset
         ########################################################################
+        evaluator = RagasEvaluator()
         result = evaluator.run(
-            dataset=base_ds, student_model=student_model, run_config=run_config
+            dataset=base_ds,
+            student_model=student_model,
+            run_config=run_config,
+            openai_client=mock_client,
         )
 
         self.assertIsInstance(result, EvaluationResult)
@@ -142,15 +139,35 @@ class TestRagasEvaluator(unittest.TestCase):
         ########################################################################
         # Test case: passing a dataset in via Path to JSONL file
         ########################################################################
+        evaluator = RagasEvaluator()
         mock_read_json.return_value = DataFrame(base_ds)
         result = evaluator.run(
             dataset=Path("dummy_path.jsonl"),
             student_model=student_model,
             run_config=run_config,
+            openai_client=mock_client,
         )
 
         self.assertIsInstance(result, EvaluationResult)
         mock_read_json.assert_called_once_with(
+            Path("dummy_path.jsonl"), orient="records", lines=True
+        )
+        mock_generate_answers_from_model.assert_called()
+        mock_evaluate.assert_called()
+
+        ########################################################################
+        # Test case: using the instance attributes
+        ########################################################################
+        evaluator = RagasEvaluator(
+            student_model=student_model,
+            openai_client=mock_client,
+            run_config=run_config,
+        )
+        mock_read_json.return_value = DataFrame(base_ds)
+        result = evaluator.run(dataset=Path("dummy_path.jsonl"))
+
+        self.assertIsInstance(result, EvaluationResult)
+        mock_read_json.assert_called_with(
             Path("dummy_path.jsonl"), orient="records", lines=True
         )
         mock_generate_answers_from_model.assert_called()
