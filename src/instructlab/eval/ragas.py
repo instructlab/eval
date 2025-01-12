@@ -11,16 +11,23 @@ from pandas import DataFrame, read_json
 from pydantic import BaseModel, ConfigDict, Field
 from ragas.evaluation import EvaluationDataset, EvaluationResult, RunConfig, evaluate
 from ragas.metrics import Metric
-from ragas.metrics._domain_specific_rubrics import (  # the rubrics we must instantiate are located inside of a file marked as private
-    DEFAULT_WITH_REFERENCE_RUBRICS,
-    RubricsScore,
-)
+from ragas.metrics._domain_specific_rubrics import RubricsScore
 
 # Local
 from .evaluator import Evaluator
 from .logger_config import setup_logger
 
 logger = setup_logger(__name__)
+
+# DEFAULT_WITH_REFERENCE_RUBRICS from ragas v0.2.11.
+# This rubric is hardcoded in case ragas makes any changes to their DEFAULT_WITH_REFERENCE_RUBRICS in the future
+SCORING_RUBRICS = {
+    "score1_description": "The response is entirely incorrect, irrelevant, or does not align with the reference in any meaningful way.",
+    "score2_description": "The response partially matches the reference but contains major errors, significant omissions, or irrelevant information.",
+    "score3_description": "The response aligns with the reference overall but lacks sufficient detail, clarity, or contains minor inaccuracies.",
+    "score4_description": "The response is mostly accurate, aligns closely with the reference, and contains only minor issues or omissions.",
+    "score5_description": "The response is fully accurate, completely aligns with the reference, and is clear, thorough, and detailed.",
+}
 
 
 class Sample(TypedDict):
@@ -256,9 +263,8 @@ class RagasEvaluator(Evaluator):
 
     @staticmethod
     def _get_metrics() -> List[Metric]:
-        # default set of metrics
         return [
             RubricsScore(
-                rubrics=DEFAULT_WITH_REFERENCE_RUBRICS,
+                rubrics=SCORING_RUBRICS,
             )
         ]
