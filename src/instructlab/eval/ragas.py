@@ -12,8 +12,8 @@ from pydantic import BaseModel, ConfigDict, Field
 from ragas.evaluation import EvaluationDataset, EvaluationResult, RunConfig, evaluate
 from ragas.metrics import Metric
 from ragas.metrics._domain_specific_rubrics import (  # the rubrics we must instantiate are located inside of a file marked as private
-    DEFAULT_WITH_REFERENCE_RUBRICS,
     RubricsScore,
+    SingleTurnPrompt,
 )
 
 # Local
@@ -21,6 +21,14 @@ from .evaluator import Evaluator
 from .logger_config import setup_logger
 
 logger = setup_logger(__name__)
+
+OLD_DEFAULT_WITH_REFERENCE_RUBRICS = {
+    "score1_description": "The response is incorrect, irrelevant, or does not align with the ground truth.",
+    "score2_description": "The response partially matches the ground truth but includes significant errors, omissions, or irrelevant information.",
+    "score3_description": "The response generally aligns with the ground truth but may lack detail, clarity, or have minor inaccuracies.",
+    "score4_description": "The response is mostly accurate and aligns well with the ground truth, with only minor issues or missing details.",
+    "score5_description": "The response is fully accurate, aligns completely with the ground truth, and is clear and detailed.",
+}
 
 
 class Sample(TypedDict):
@@ -256,9 +264,8 @@ class RagasEvaluator(Evaluator):
 
     @staticmethod
     def _get_metrics() -> List[Metric]:
-        # default set of metrics
         return [
             RubricsScore(
-                rubrics=DEFAULT_WITH_REFERENCE_RUBRICS,
+                rubrics=OLD_DEFAULT_WITH_REFERENCE_RUBRICS,
             )
         ]

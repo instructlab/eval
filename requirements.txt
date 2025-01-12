@@ -10,4 +10,4 @@ pandas
 pandas-stubs
 lm-eval>=0.4.4
 httpx
-ragas
+ragas>=0.2.11
