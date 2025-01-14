@@ -158,3 +158,27 @@ class EmptyTaxonomyError(EvalError):
     def __init__(self) -> None:
         super().__init__()
         self.message = "Provided taxonomy doesn't contain any skill qna.yaml files"
+
+
+class ModelResponseGenerationError(EvalError):
+    """
+    Error raised when getting a response from an OpenAI client
+    Attributes
+        message         error message to be printed on raise
+    """
+
+    def __init__(self, message) -> None:
+        super().__init__()
+        self.message = message
+
+
+class ModelListGenerationError(EvalError):
+    """
+    Error raised when getting a list of models from an OpenAI client
+    Attributes
+        message         error message to be printed on raise
+    """
+
+    def __init__(self, message) -> None:
+        super().__init__()
+        self.message = message
