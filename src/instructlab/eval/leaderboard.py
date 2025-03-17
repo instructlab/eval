@@ -169,9 +169,9 @@ def evaluate_with_hf(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
         p.join()
 
     # extract the result which is not None
-    assert (
-        len([res for res in results.values() if res is not None]) == 1
-    ), "we expect exactly 1 process to return a results dict properly"
+    assert len([res for res in results.values() if res is not None]) == 1, (
+        "we expect exactly 1 process to return a results dict properly"
+    )
     results_dict = [res for res in results.values() if res is not None][0]
     return results_dict
 
@@ -237,9 +237,9 @@ def parse_bbh(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.BBH.value, "acc_norm"
     )
-    assert (
-        len(parsed_scores["subtasks"]) == 24
-    ), "there should be 24 subtasks of bbh run"
+    assert len(parsed_scores["subtasks"]) == 24, (
+        "there should be 24 subtasks of bbh run"
+    )
     return parsed_scores
 
 
@@ -290,9 +290,9 @@ def parse_ifeval(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
             scores.append(value)
             target_metrics.remove(metric)
 
-    assert (
-        len(scores) == 2
-    ), f"there should only be 2 values extracted in ifeval, got: {len(scores)}"
+    assert len(scores) == 2, (
+        f"there should only be 2 values extracted in ifeval, got: {len(scores)}"
+    )
     return {
         "score": sum(scores) / 2,
     }
@@ -316,9 +316,9 @@ def parse_gpqa(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.GPQA.value, "acc_norm"
     )
-    assert (
-        len(parsed_scores["subtasks"]) == 3
-    ), f"Expected 3 gpqa scores, got {len(parsed_scores['subtasks'])}"
+    assert len(parsed_scores["subtasks"]) == 3, (
+        f"Expected 3 gpqa scores, got {len(parsed_scores['subtasks'])}"
+    )
     return parsed_scores
 
 
@@ -329,9 +329,9 @@ def parse_math_hard(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.MATH_HARD.value, "exact_match"
     )
-    assert (
-        len(parsed_scores["subtasks"]) == 7
-    ), f"leaderboard_math_hard should have 7 subtasks, found: {len(parsed_scores['subtasks'])}"
+    assert len(parsed_scores["subtasks"]) == 7, (
+        f"leaderboard_math_hard should have 7 subtasks, found: {len(parsed_scores['subtasks'])}"
+    )
     return parsed_scores
 
 
@@ -366,9 +366,9 @@ def get_scores_from_result_dicts(
         # this is just a sanity check step
         benchmarks_already_covered = set(parsed_scores.keys())
         overlapping_benchmarks = benchmarks_already_covered & benchmarks_to_parse
-        assert (
-            len(benchmarks_already_covered & benchmarks_to_parse) == 0
-        ), f"expected no overlapping benchmarks but found the following to overlap: {list(overlapping_benchmarks)}"
+        assert len(benchmarks_already_covered & benchmarks_to_parse) == 0, (
+            f"expected no overlapping benchmarks but found the following to overlap: {list(overlapping_benchmarks)}"
+        )
 
         # now actually add them
         for benchmark in benchmarks_to_parse:
@@ -506,7 +506,8 @@ class LeaderboardV2Evaluator(Evaluator):
 
         # create the directory if it doesn't exist
         output_dir = os.path.dirname(output_file)
-        os.makedirs(output_dir, exist_ok=True)
+        if output_dir:
+            os.makedirs(output_dir, exist_ok=True)
         with open(output_file, "w") as f:
             json.dump(self._results, f, indent=2)
 
