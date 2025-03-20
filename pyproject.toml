@@ -54,6 +54,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {leaderboard = {file = ["requirements-leaderboard.txt"]}}
 
 [tool.setuptools.packages.find]
 where = ["src"]

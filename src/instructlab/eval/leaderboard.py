@@ -541,6 +541,9 @@ def calculate_overall_leaderboard_score(results: t.Dict[str, ParsedScores]) -> f
 class LeaderboardV2Evaluator(Evaluator):
     """
     Evaluator for Open Leaderboard v2.
+
+    NOTE: This evaluator requires the optional leaderboard dependencies.
+    Install with: pip install instructlab-eval[leaderboard]
     """
 
     name = "leaderboard_v2"

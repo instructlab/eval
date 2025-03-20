@@ -29,6 +29,16 @@ the phase. At the end of each phase, we evaluate all the checkpoints in order to
 Once training is complete, and we have picked the best checkpoint from the output of the final phase, we can run full-scale evaluation suite which runs MT-Bench, MMLU,
 MT-Bench Branch and MMLU Branch.
 
+### Leaderboard Evaluation
+
+For cases when you want to run the full Open LLM Leaderboard v2 evaluation suite, we provide an optional dependency package for the leaderboard tasks. This includes additional benchmarks like GPQA, IFEVAL, BBH, MMLU-PRO, MUSR, and MATH-HARD.
+
+To install the optional leaderboard dependencies, use:
+
+```bash
+pip install instructlab-eval[leaderboard]
+```
+
 ## Methods of Evaluation
 
 Below are more in-depth explanations of the suite of benchmarks we are using as methods for evaluation of models.
