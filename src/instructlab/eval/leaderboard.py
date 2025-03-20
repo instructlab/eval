@@ -77,7 +77,6 @@ LEADERBOARD_V2_MCQ_TASKS = [
 
 
 def evaluate_with_vllm(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
-    os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "true"
     results = simple_evaluate(
         tasks=args["tasks"],
         model="vllm",
@@ -93,12 +92,12 @@ def evaluate_with_vllm(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
         apply_chat_template=True,
         fewshot_as_multiturn=True,
         batch_size="auto",
+        confirm_run_unsafe_code=True,
     )
     return results
 
 
 def worker(rank, world_size, args: LeaderboardArgs, result_queue: mp.Queue):
-    os.environ["HF_DATASETS_TRUST_REMOTE_CODE"] = "true"
     os.environ["RANK"] = str(rank)
     os.environ["WORLD_SIZE"] = str(world_size)
     os.environ["LOCAL_RANK"] = str(rank)
@@ -122,17 +121,15 @@ def worker(rank, world_size, args: LeaderboardArgs, result_queue: mp.Queue):
         batch_size="auto",
         device=f"cuda:{device.index}",
         cache_requests=True,
+        confirm_run_unsafe_code=True,
     )
 
-    print(f"Rank {rank} got results: {type(results)}, putting them in the bucket")
     result_queue.put((rank, results))
-    print(f"Rank {rank} done putting results in the bucket")
 
     # clear torch memory
     gc.collect()
     torch.cuda.empty_cache()
 
-    print(f"Rank {rank} destroying process group")
     dist.destroy_process_group()
 
 
@@ -159,10 +156,8 @@ def evaluate_with_hf(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
 
     results = {}
     for _ in range(num_processes):
-        print(f"[master] getting results from the bucket")
         rank, result = result_queue.get()
         results[rank] = result
-        print(f"[master] got results from rank {rank}")
 
     # Wait for all processes to complete
     for p in processes:
@@ -209,7 +204,7 @@ def parse_multitask_results(
 
     The end result is an unweighted average of all the subtasks, as well as a per-subtask breakdown.
     """
-    parsed_scores = {"score": 0.0, "subtasks": {}}
+    parsed_scores: ParsedScores = {"score": 0.0, "subtasks": {}}
     subtask_scores = {}
     target_subtasks = result_dict["group_subtasks"].get(benchmark)
     if not target_subtasks:
@@ -335,7 +330,7 @@ def parse_math_hard(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     return parsed_scores
 
 
-def get_parser(subtask: str) -> t.Callable[[t.Dict, str, str], ParsedScores]:
+def get_parser(subtask: str) -> t.Callable[[t.Dict[str, t.Any]], ParsedScores]:
     parser_map = {
         LeaderboardV2Tasks.BBH.value: parse_bbh,
         LeaderboardV2Tasks.GPQA.value: parse_gpqa,
@@ -349,13 +344,45 @@ def get_parser(subtask: str) -> t.Callable[[t.Dict, str, str], ParsedScores]:
     ]  # this will either parse and map into the correct section, or error
 
 
+def build_leaderboard_v2_result(
+    parsed_scores: t.Dict[str, ParsedScores],
+) -> LeaderboardV2EvalResult:
+    """
+    Build the leaderboard v2 result from the parsed scores.
+    """
+    # now let's build the overall score
+    leaderboard_result: LeaderboardV2EvalResult = {
+        "overall_score": calculate_overall_leaderboard_score(parsed_scores),
+    }
+
+    # explicitly set the score for each subtask in order to satisfy mypy
+    if "leaderboard_bbh" in parsed_scores:
+        leaderboard_result["leaderboard_bbh"] = parsed_scores["leaderboard_bbh"]
+    if "leaderboard_gpqa" in parsed_scores:
+        leaderboard_result["leaderboard_gpqa"] = parsed_scores["leaderboard_gpqa"]
+    if "leaderboard_ifeval" in parsed_scores:
+        leaderboard_result["leaderboard_ifeval"] = parsed_scores["leaderboard_ifeval"]
+    if "leaderboard_math_hard" in parsed_scores:
+        leaderboard_result["leaderboard_math_hard"] = parsed_scores[
+            "leaderboard_math_hard"
+        ]
+    if "leaderboard_mmlu_pro" in parsed_scores:
+        leaderboard_result["leaderboard_mmlu_pro"] = parsed_scores[
+            "leaderboard_mmlu_pro"
+        ]
+    if "leaderboard_musr" in parsed_scores:
+        leaderboard_result["leaderboard_musr"] = parsed_scores["leaderboard_musr"]
+
+    return leaderboard_result
+
+
 def get_scores_from_result_dicts(
-    *result_dicts: t.List[t.Dict[str, t.Any]],
-) -> t.Dict[str, ParsedScores]:
+    *result_dicts: t.Dict[str, t.Any],
+) -> LeaderboardV2EvalResult:
     """
     Parse out the scores of all the subtasks of leaderboard and return.
     """
-    parsed_scores = {}
+    parsed_scores: t.Dict[str, ParsedScores] = {}
     for result_dict in result_dicts:
         benchmarks_we_got = set(result_dict["results"].keys())
         benchmarks_we_care_about = set(
@@ -375,7 +402,7 @@ def get_scores_from_result_dicts(
             parse_benchmark_fn = get_parser(benchmark)
             parsed_scores[benchmark] = parse_benchmark_fn(result_dict)
 
-    return parsed_scores
+    return build_leaderboard_v2_result(parsed_scores)
 
 
 def validate_output_path(output_file: str) -> None:
@@ -453,9 +480,9 @@ class LeaderboardV2Evaluator(Evaluator):
     def __init__(
         self,
         model_path: str,
-        tasks: t.List[str] = None,
-        num_gpus: int = None,
-        output_file: str = None,
+        tasks: t.Optional[t.List[str]] = None,
+        num_gpus: t.Optional[int] = None,
+        output_file: t.Optional[str] = None,
     ):
         self.model_path = model_path
         if not cuda.is_available():
@@ -469,11 +496,13 @@ class LeaderboardV2Evaluator(Evaluator):
 
         # validate output file
         self.output_file = output_file
-        self._results = None
-        self._lm_eval_results = []  # TODO: make it merge everything back into a single result
+        self._results: t.Optional[LeaderboardV2EvalResult] = None
+        self._lm_eval_results: t.List[
+            t.Dict[str, t.Any]
+        ] = []  # TODO: make it merge everything back into a single result
 
     @property
-    def results(self) -> LeaderboardV2EvalResult:
+    def results(self) -> t.Optional[LeaderboardV2EvalResult]:
         """
         Returns the results of the most reccent leaderboard evaluation.
 
@@ -492,7 +521,7 @@ class LeaderboardV2Evaluator(Evaluator):
         """
         return self._lm_eval_results
 
-    def save_to_file(self, output_file: str = None):
+    def save_to_file(self, output_file: t.Optional[str] = None) -> None:
         """
         Saves the results to a file.
 
@@ -513,10 +542,10 @@ class LeaderboardV2Evaluator(Evaluator):
 
     def run(
         self,
-        model_path: str | None = None,
-        tasks: t.List[str] = None,
-        num_gpus: int = None,
-        output_file: str = None,
+        model_path: t.Optional[str] = None,
+        tasks: t.Optional[t.List[str]] = None,
+        num_gpus: t.Optional[int] = None,
+        output_file: t.Optional[str] = None,
     ) -> LeaderboardV2EvalResult:
         """
         Run the Open LLM Leaderboard v2 evaluation.
@@ -537,6 +566,9 @@ class LeaderboardV2Evaluator(Evaluator):
         tasks = self.tasks if not tasks else tasks
         num_gpus = self.num_gpus if not num_gpus else num_gpus
         output_file = self.output_file if not output_file else output_file
+
+        if not tasks:
+            tasks = LEADERBOARD_V2_MCQ_TASKS + LEADERBOARD_V2_GENERATIVE_TASKS
 
         # validation logic
         # no need to validate model path -- the inference libraries will either be able to
@@ -562,25 +594,26 @@ class LeaderboardV2Evaluator(Evaluator):
         self._lm_eval_results = []
         vllm_results, hf_results = None, None
         if vllm_tasks := grouped_tasks["vllm"]:
-            args: LeaderboardArgs = {
+            args_vllm: LeaderboardArgs = {
                 "model_path": model_path,
                 "num_gpus": num_gpus,
                 "tasks": vllm_tasks,
             }
-            vllm_results = evaluate_with_vllm(args)
+            vllm_results = evaluate_with_vllm(args_vllm)
             self._lm_eval_results.append(vllm_results)
         if hf_tasks := grouped_tasks["huggingface"]:
-            args: LeaderboardArgs = {
+            args_hf: LeaderboardArgs = {
                 "model_path": model_path,
                 "num_gpus": num_gpus,
                 "tasks": hf_tasks,
             }
-            hf_results = evaluate_with_hf(args)
+            hf_results = evaluate_with_hf(args_hf)
             self._lm_eval_results.append(hf_results)
 
         # convert the output of lm-eval into something that's already parsed
-        results = get_scores_from_result_dicts(*self._lm_eval_results)
-        results["overall_score"] = calculate_overall_leaderboard_score(results)
+        results: LeaderboardV2EvalResult = get_scores_from_result_dicts(
+            *self._lm_eval_results
+        )
 
         self._results = results
         if output_file:
