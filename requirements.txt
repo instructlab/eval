@@ -8,8 +8,7 @@ transformers
 accelerate
 pandas
 pandas-stubs
-# All optional dependencies like this can be found in lm-eval:
-# https://github.com/EleutherAI/lm-evaluation-harness/blob/main/pyproject.toml 
-lm-eval[math,ifeval,sentencepiece,vllm]>=0.4.4
+# Base lm-eval dependency
+lm-eval>=0.4.4
 httpx
 ragas>=0.2.11
