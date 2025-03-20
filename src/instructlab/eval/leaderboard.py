@@ -5,6 +5,7 @@ import gc
 import json
 import os
 import typing as t
+from copy import deepcopy
 
 # Third Party
 from accelerate import Accelerator
@@ -46,10 +47,15 @@ class LeaderboardV2Tasks(StrEnum):
     BBH = "leaderboard_bbh"
 
 
-class LeaderboardArgs(t.TypedDict):
+class LeaderboardArgsRequired(t.TypedDict):
     model_path: str
     num_gpus: int
     tasks: t.List[str]
+
+
+class LeaderboardArgs(LeaderboardArgsRequired, total=False):
+    eval_config: t.Dict[str, t.Any]
+    backend_config: t.Dict[str, t.Any]
 
 
 class TaskGrouping(t.TypedDict):
@@ -60,6 +66,30 @@ class TaskGrouping(t.TypedDict):
     huggingface: t.List[str]
     vllm: t.List[str]
 
+
+# Default configuration parameters for evaluation
+DEFAULT_EVAL_CONFIG = {
+    "batch_size": "auto",
+    "apply_chat_template": True,
+    "fewshot_as_multiturn": True,
+    "confirm_run_unsafe_code": True,
+    "max_model_len": 32768,
+    "system_instruction": None,
+}
+
+# Default backend-specific configuration parameters
+DEFAULT_VLLM_CONFIG = {
+    "dtype": "float16",
+    "gpu_memory_utilization": 0.8,
+    "disable_custom_all_reduce": True,
+    "enforce_eager": False,
+}
+
+DEFAULT_HF_CONFIG = {
+    "dtype": "float16",
+    "trust_remote_code": True,
+    "cache_requests": True,
+}
 
 # generative tasks go here
 LEADERBOARD_V2_GENERATIVE_TASKS = [
@@ -77,22 +107,36 @@ LEADERBOARD_V2_MCQ_TASKS = [
 
 
 def evaluate_with_vllm(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
+    # Start with default configurations
+    eval_config = deepcopy(DEFAULT_EVAL_CONFIG)
+    backend_config = deepcopy(DEFAULT_VLLM_CONFIG)
+
+    # Override with user-provided configurations
+    if "eval_config" in args and args["eval_config"]:
+        eval_config.update(args["eval_config"])
+    if "backend_config" in args and args["backend_config"]:
+        backend_config.update(args["backend_config"])
+
+    # Prepare model_args
+    model_args = {
+        "pretrained": args["model_path"],
+        "data_parallel_size": args["num_gpus"],
+        **backend_config,
+    }
+
+    # Set max_model_len if provided in eval_config
+    if "max_model_len" in eval_config:
+        model_args["max_model_len"] = eval_config.pop("max_model_len")
+
+    # Extract system_instruction if provided
+    system_instruction = eval_config.pop("system_instruction", None)
+
     results = simple_evaluate(
         tasks=args["tasks"],
         model="vllm",
-        model_args={
-            "pretrained": args["model_path"],
-            "dtype": "float16",
-            "data_parallel_size": args["num_gpus"],
-            "gpu_memory_utilization": 0.8,
-            "max_model_len": 32768,
-            "disable_custom_all_reduce": True,
-            "enforce_eager": False,
-        },
-        apply_chat_template=True,
-        fewshot_as_multiturn=True,
-        batch_size="auto",
-        confirm_run_unsafe_code=True,
+        model_args=model_args,
+        system_instruction=system_instruction,
+        **eval_config,
     )
     return results
 
@@ -108,20 +152,33 @@ def worker(rank, world_size, args: LeaderboardArgs, result_queue: mp.Queue):
     device = accelerator.device
     assert device.type == "cuda", f"device is not a cuda device: {device}"
 
+    # Start with default configurations
+    eval_config = deepcopy(DEFAULT_EVAL_CONFIG)
+    backend_config = deepcopy(DEFAULT_HF_CONFIG)
+
+    # Override with user-provided configurations
+    if "eval_config" in args and args["eval_config"]:
+        eval_config.update(args["eval_config"])
+    if "backend_config" in args and args["backend_config"]:
+        backend_config.update(args["backend_config"])
+
+    # Prepare model_args
+    model_args = {"pretrained": args["model_path"], **backend_config}
+
+    # Set max_model_len if provided in eval_config
+    if "max_model_len" in eval_config:
+        model_args["max_model_len"] = eval_config.pop("max_model_len")
+
+    # Extract system_instruction if provided
+    system_instruction = eval_config.pop("system_instruction", None)
+
     results = simple_evaluate(
         model="hf",
-        model_args={
-            "pretrained": args["model_path"],
-            "dtype": "float16",
-            "trust_remote_code": True,
-        },
+        model_args=model_args,
         tasks=args["tasks"],
-        apply_chat_template=True,
-        fewshot_as_multiturn=True,
-        batch_size="auto",
         device=f"cuda:{device.index}",
-        cache_requests=True,
-        confirm_run_unsafe_code=True,
+        system_instruction=system_instruction,
+        **eval_config,
     )
 
     result_queue.put((rank, results))
@@ -483,7 +540,40 @@ class LeaderboardV2Evaluator(Evaluator):
         tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
+        eval_config: t.Optional[t.Dict[str, t.Any]] = None,
+        vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
+        hf_config: t.Optional[t.Dict[str, t.Any]] = None,
     ):
+        """
+        Initialize the evaluator.
+
+        Args:
+            model_path: Path to the model to evaluate.
+            tasks: List of tasks to evaluate on.
+            num_gpus: Number of GPUs to use.
+            output_file: Path to save results to.
+            eval_config: Configuration for general evaluation parameters that apply to both backends.
+                Default values (can be overridden):
+                - batch_size: "auto" - Batch size for evaluation, or "auto" for automatic batching
+                - apply_chat_template: True - Whether to apply chat template formatting
+                - fewshot_as_multiturn: True - Whether to format few-shot examples as multi-turn conversations
+                - confirm_run_unsafe_code: True - Whether to run potentially unsafe code without confirmation
+                - max_model_len: 32768 - Maximum sequence length for the model
+                - system_instruction: None - Optional system instruction to prepend to prompts
+            vllm_config: Configuration for vLLM-specific parameters.
+                Default values (can be overridden):
+                - dtype: "float16" - Data type for model weights
+                - gpu_memory_utilization: 0.8 - Fraction of GPU memory to use
+                - disable_custom_all_reduce: True - Whether to disable custom all-reduce implementation
+                - enforce_eager: False - Whether to enforce eager execution
+                And any other vLLM parameters supported by simple_evaluate.
+            hf_config: Configuration for HuggingFace-specific parameters.
+                Default values (can be overridden):
+                - dtype: "float16" - Data type for model weights
+                - trust_remote_code: True - Whether to trust remote code in model loading
+                - cache_requests: True - Whether to cache requests
+                And any other HuggingFace parameters supported by simple_evaluate.
+        """
         self.model_path = model_path
         if not cuda.is_available():
             raise ValueError(
@@ -493,6 +583,11 @@ class LeaderboardV2Evaluator(Evaluator):
         # set whatever we need here
         self.num_gpus = num_gpus
         self.tasks = tasks
+
+        # Store evaluation configurations
+        self.eval_config = eval_config or {}
+        self.vllm_config = vllm_config or {}
+        self.hf_config = hf_config or {}
 
         # validate output file
         self.output_file = output_file
@@ -546,6 +641,9 @@ class LeaderboardV2Evaluator(Evaluator):
         tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
+        eval_config: t.Optional[t.Dict[str, t.Any]] = None,
+        vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
+        hf_config: t.Optional[t.Dict[str, t.Any]] = None,
     ) -> LeaderboardV2EvalResult:
         """
         Run the Open LLM Leaderboard v2 evaluation.
@@ -558,6 +656,27 @@ class LeaderboardV2Evaluator(Evaluator):
             tasks: The tasks to evaluate.
             num_gpus: The number of GPUs to use.
             output_file: The path to the file to save the results to.
+            eval_config: Configuration for general evaluation parameters that apply to both backends.
+                Default values (can be overridden):
+                - batch_size: "auto" - Batch size for evaluation, or "auto" for automatic batching
+                - apply_chat_template: True - Whether to apply chat template formatting
+                - fewshot_as_multiturn: True - Whether to format few-shot examples as multi-turn conversations
+                - confirm_run_unsafe_code: True - Whether to run potentially unsafe code without confirmation
+                - max_model_len: 32768 - Maximum sequence length for the model
+                - system_instruction: None - Optional system instruction to prepend to prompts
+            vllm_config: Configuration for vLLM-specific parameters.
+                Default values (can be overridden):
+                - dtype: "float16" - Data type for model weights
+                - gpu_memory_utilization: 0.8 - Fraction of GPU memory to use
+                - disable_custom_all_reduce: True - Whether to disable custom all-reduce implementation
+                - enforce_eager: False - Whether to enforce eager execution
+                And any other vLLM parameters supported by simple_evaluate.
+            hf_config: Configuration for HuggingFace-specific parameters.
+                Default values (can be overridden):
+                - dtype: "float16" - Data type for model weights
+                - trust_remote_code: True - Whether to trust remote code in model loading
+                - cache_requests: True - Whether to cache requests
+                And any other HuggingFace parameters supported by simple_evaluate.
 
         Returns:
             LeaderboardV2EvalResult: A dict containing the overall leaderboard score and the breakdown per subtask.
@@ -566,6 +685,11 @@ class LeaderboardV2Evaluator(Evaluator):
         tasks = self.tasks if not tasks else tasks
         num_gpus = self.num_gpus if not num_gpus else num_gpus
         output_file = self.output_file if not output_file else output_file
+
+        # Merge configurations with instance configurations, with run-time configs taking precedence
+        final_eval_config = {**self.eval_config, **(eval_config or {})}
+        final_vllm_config = {**self.vllm_config, **(vllm_config or {})}
+        final_hf_config = {**self.hf_config, **(hf_config or {})}
 
         if not tasks:
             tasks = LEADERBOARD_V2_MCQ_TASKS + LEADERBOARD_V2_GENERATIVE_TASKS
@@ -598,6 +722,8 @@ class LeaderboardV2Evaluator(Evaluator):
                 "model_path": model_path,
                 "num_gpus": num_gpus,
                 "tasks": vllm_tasks,
+                "eval_config": final_eval_config,
+                "backend_config": final_vllm_config,
             }
             vllm_results = evaluate_with_vllm(args_vllm)
             self._lm_eval_results.append(vllm_results)
@@ -606,6 +732,8 @@ class LeaderboardV2Evaluator(Evaluator):
                 "model_path": model_path,
                 "num_gpus": num_gpus,
                 "tasks": hf_tasks,
+                "eval_config": final_eval_config,
+                "backend_config": final_hf_config,
             }
             hf_results = evaluate_with_hf(args_hf)
             self._lm_eval_results.append(hf_results)
