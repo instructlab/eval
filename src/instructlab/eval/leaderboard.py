@@ -75,6 +75,7 @@ DEFAULT_EVAL_CONFIG = {
     "confirm_run_unsafe_code": True,
     "max_model_len": 32768,
     "system_instruction": None,
+    "cache_requests": False,
 }
 
 # Default backend-specific configuration parameters
@@ -88,7 +89,6 @@ DEFAULT_VLLM_CONFIG = {
 DEFAULT_HF_CONFIG = {
     "dtype": "float16",
     "trust_remote_code": True,
-    "cache_requests": True,
 }
 
 # generative tasks go here
@@ -560,6 +560,7 @@ class LeaderboardV2Evaluator(Evaluator):
                 - confirm_run_unsafe_code: True - Whether to run potentially unsafe code without confirmation
                 - max_model_len: 32768 - Maximum sequence length for the model
                 - system_instruction: None - Optional system instruction to prepend to prompts
+                - cache_requests: False - Whether to cache requests for the dataset
             vllm_config: Configuration for vLLM-specific parameters.
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
@@ -571,7 +572,6 @@ class LeaderboardV2Evaluator(Evaluator):
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - trust_remote_code: True - Whether to trust remote code in model loading
-                - cache_requests: True - Whether to cache requests
                 And any other HuggingFace parameters supported by simple_evaluate.
         """
         self.model_path = model_path
@@ -675,7 +675,6 @@ class LeaderboardV2Evaluator(Evaluator):
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - trust_remote_code: True - Whether to trust remote code in model loading
-                - cache_requests: True - Whether to cache requests
                 And any other HuggingFace parameters supported by simple_evaluate.
 
         Returns:
