@@ -65,6 +65,7 @@ class TaskGrouping(t.TypedDict):
 
     huggingface: t.List[str]
     vllm: t.List[str]
+    openai: t.List[str]
 
 
 # Default configuration parameters for evaluation
@@ -73,7 +74,6 @@ DEFAULT_EVAL_CONFIG = {
     "apply_chat_template": True,
     "fewshot_as_multiturn": True,
     "confirm_run_unsafe_code": True,
-    "max_model_len": 32768,
     "system_instruction": None,
     "cache_requests": False,
 }
@@ -84,11 +84,20 @@ DEFAULT_VLLM_CONFIG = {
     "gpu_memory_utilization": 0.8,
     "disable_custom_all_reduce": True,
     "enforce_eager": False,
+    "max_model_len": 32768,
 }
 
 DEFAULT_HF_CONFIG = {
     "dtype": "float16",
     "trust_remote_code": True,
+    "max_length": 32768,
+}
+
+# 1. Add OpenAI configuration defaults
+DEFAULT_OPENAI_CONFIG = {
+    "max_tokens": 768,
+    "temperature": 0.0,
+    "seed": 1337,
 }
 
 # generative tasks go here
@@ -123,10 +132,6 @@ def evaluate_with_vllm(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
         "data_parallel_size": args["num_gpus"],
         **backend_config,
     }
-
-    # Set max_model_len if provided in eval_config
-    if "max_model_len" in eval_config:
-        model_args["max_model_len"] = eval_config.pop("max_model_len")
 
     # Extract system_instruction if provided
     system_instruction = eval_config.pop("system_instruction", None)
@@ -164,10 +169,6 @@ def worker(rank, world_size, args: LeaderboardArgs, result_queue: mp.Queue):
 
     # Prepare model_args
     model_args = {"pretrained": args["model_path"], **backend_config}
-
-    # Set max_model_len if provided in eval_config
-    if "max_model_len" in eval_config:
-        model_args["max_model_len"] = eval_config.pop("max_model_len")
 
     # Extract system_instruction if provided
     system_instruction = eval_config.pop("system_instruction", None)
@@ -504,14 +505,24 @@ def validate_leaderboard_v2_tasks(tasks: t.List[str]):
         )
 
 
-def get_task_groupings(tasks: t.List[str]) -> TaskGrouping:
+def get_task_groupings(
+    tasks: t.List[str], api_endpoint: t.Optional[str] = None
+) -> TaskGrouping:
     """
     Given a list of tasks, bucket them per their optimal runtime.
+    When an API endpoint is provided, all tasks are routed to OpenAI.
     """
+    if api_endpoint:
+        # When using an API endpoint, route all tasks to OpenAI
+        return {"vllm": [], "huggingface": [], "openai": tasks}
+
+    # Default behavior when no API endpoint is provided
     task_grouping: TaskGrouping = {
         "vllm": [task for task in tasks if task in LEADERBOARD_V2_GENERATIVE_TASKS],
         "huggingface": [task for task in tasks if task in LEADERBOARD_V2_MCQ_TASKS],
+        "openai": [],
     }
+
     overlapping_tasks = set(task_grouping["vllm"]) & set(task_grouping["huggingface"])
     assert not overlapping_tasks
     return task_grouping
@@ -543,51 +554,63 @@ class LeaderboardV2Evaluator(Evaluator):
         eval_config: t.Optional[t.Dict[str, t.Any]] = None,
         vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
         hf_config: t.Optional[t.Dict[str, t.Any]] = None,
+        openai_config: t.Optional[t.Dict[str, t.Any]] = None,
+        api_endpoint: t.Optional[str] = None,
     ):
         """
         Initialize the evaluator.
 
         Args:
-            model_path: Path to the model to evaluate.
+            model_path: Path to the model to evaluate or model name for OpenAI API.
             tasks: List of tasks to evaluate on.
-            num_gpus: Number of GPUs to use.
+            num_gpus: Number of GPUs to use (ignored when using API endpoint).
             output_file: Path to save results to.
-            eval_config: Configuration for general evaluation parameters that apply to both backends.
+            eval_config: Configuration for general evaluation parameters that apply to all backends.
                 Default values (can be overridden):
                 - batch_size: "auto" - Batch size for evaluation, or "auto" for automatic batching
                 - apply_chat_template: True - Whether to apply chat template formatting
                 - fewshot_as_multiturn: True - Whether to format few-shot examples as multi-turn conversations
                 - confirm_run_unsafe_code: True - Whether to run potentially unsafe code without confirmation
-                - max_model_len: 32768 - Maximum sequence length for the model
                 - system_instruction: None - Optional system instruction to prepend to prompts
-                - cache_requests: False - Whether to cache requests for the dataset
+                - cache_requests: False - Whether to cache requests
             vllm_config: Configuration for vLLM-specific parameters.
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - gpu_memory_utilization: 0.8 - Fraction of GPU memory to use
                 - disable_custom_all_reduce: True - Whether to disable custom all-reduce implementation
                 - enforce_eager: False - Whether to enforce eager execution
+                - max_model_len: 32768 - Maximum sequence length for the model
                 And any other vLLM parameters supported by simple_evaluate.
             hf_config: Configuration for HuggingFace-specific parameters.
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - trust_remote_code: True - Whether to trust remote code in model loading
+                - max_length: 32768 - Maximum sequence length for the model
                 And any other HuggingFace parameters supported by simple_evaluate.
+            openai_config: Configuration for OpenAI-specific parameters.
+                Default values (can be overridden):
+                - max_tokens: 768 - Maximum tokens to generate
+                - temperature: 0.0 - Temperature for sampling
+                - seed: 1337 - Seed for reproducibility
+            api_endpoint: Optional OpenAI-compatible API endpoint.
+                When provided, tasks are evaluated using the OpenAI API instead of local models.
         """
         self.model_path = model_path
-        if not cuda.is_available():
+        if not api_endpoint and not cuda.is_available():
             raise ValueError(
-                "Running without CUDA is currently unsupported. Contributions are welcome."
+                "Running without CUDA is currently unsupported unless using an API endpoint."
             )
 
         # set whatever we need here
         self.num_gpus = num_gpus
         self.tasks = tasks
+        self.api_endpoint = api_endpoint
 
         # Store evaluation configurations
         self.eval_config = eval_config or {}
         self.vllm_config = vllm_config or {}
         self.hf_config = hf_config or {}
+        self.openai_config = openai_config or {}
 
         # validate output file
         self.output_file = output_file
@@ -644,38 +667,49 @@ class LeaderboardV2Evaluator(Evaluator):
         eval_config: t.Optional[t.Dict[str, t.Any]] = None,
         vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
         hf_config: t.Optional[t.Dict[str, t.Any]] = None,
+        openai_config: t.Optional[t.Dict[str, t.Any]] = None,
+        api_endpoint: t.Optional[str] = None,
     ) -> LeaderboardV2EvalResult:
         """
         Run the Open LLM Leaderboard v2 evaluation.
 
-        This function will use both HF transformers and inline vLLM to run the evaluation.
-        It will then parse the results and save them to a file.
+        This function will use the appropriate backend based on the provided parameters:
+        - With api_endpoint: Uses the OpenAI API for all tasks
+        - Without api_endpoint: Uses both HF transformers and vLLM for optimal performance
 
         Args:
-            model_path: The path to the model to evaluate.
+            model_path: The path to the model to evaluate or model name for API.
             tasks: The tasks to evaluate.
-            num_gpus: The number of GPUs to use.
+            num_gpus: The number of GPUs to use (ignored when using API).
             output_file: The path to the file to save the results to.
-            eval_config: Configuration for general evaluation parameters that apply to both backends.
+            eval_config: Configuration for general evaluation parameters that apply to all backends.
                 Default values (can be overridden):
                 - batch_size: "auto" - Batch size for evaluation, or "auto" for automatic batching
                 - apply_chat_template: True - Whether to apply chat template formatting
                 - fewshot_as_multiturn: True - Whether to format few-shot examples as multi-turn conversations
                 - confirm_run_unsafe_code: True - Whether to run potentially unsafe code without confirmation
-                - max_model_len: 32768 - Maximum sequence length for the model
                 - system_instruction: None - Optional system instruction to prepend to prompts
+                - cache_requests: False - Whether to cache requests
             vllm_config: Configuration for vLLM-specific parameters.
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - gpu_memory_utilization: 0.8 - Fraction of GPU memory to use
                 - disable_custom_all_reduce: True - Whether to disable custom all-reduce implementation
                 - enforce_eager: False - Whether to enforce eager execution
+                - max_model_len: 32768 - Maximum sequence length for the model
                 And any other vLLM parameters supported by simple_evaluate.
             hf_config: Configuration for HuggingFace-specific parameters.
                 Default values (can be overridden):
                 - dtype: "float16" - Data type for model weights
                 - trust_remote_code: True - Whether to trust remote code in model loading
+                - max_length: 32768 - Maximum sequence length for the model
                 And any other HuggingFace parameters supported by simple_evaluate.
+            openai_config: Configuration for OpenAI-specific parameters.
+                Default values (can be overridden):
+                - max_tokens: 768 - Maximum tokens to generate
+                - temperature: 0.0 - Temperature for sampling
+                - seed: 1337 - Seed for reproducibility
+            api_endpoint: Optional OpenAI-compatible API endpoint.
 
         Returns:
             LeaderboardV2EvalResult: A dict containing the overall leaderboard score and the breakdown per subtask.
@@ -684,60 +718,76 @@ class LeaderboardV2Evaluator(Evaluator):
         tasks = self.tasks if not tasks else tasks
         num_gpus = self.num_gpus if not num_gpus else num_gpus
         output_file = self.output_file if not output_file else output_file
+        api_endpoint = self.api_endpoint if api_endpoint is None else api_endpoint
 
         # Merge configurations with instance configurations, with run-time configs taking precedence
         final_eval_config = {**self.eval_config, **(eval_config or {})}
         final_vllm_config = {**self.vllm_config, **(vllm_config or {})}
         final_hf_config = {**self.hf_config, **(hf_config or {})}
+        final_openai_config = {**self.openai_config, **(openai_config or {})}
+
+        # If API endpoint is provided, add it to the OpenAI config
+        if api_endpoint and "base_url" not in final_openai_config:
+            final_openai_config["base_url"] = api_endpoint
 
         if not tasks:
             tasks = LEADERBOARD_V2_MCQ_TASKS + LEADERBOARD_V2_GENERATIVE_TASKS
 
         # validation logic
-        # no need to validate model path -- the inference libraries will either be able to
-        # load it, or they won't
-
         validate_leaderboard_v2_tasks(tasks)
-        if not num_gpus:
-            num_gpus = cuda.device_count()
-        if num_gpus <= 0 or num_gpus > cuda.device_count():
-            raise ValueError(
-                f"invalid value for num_gpus, must be between 1 and {cuda.device_count()}; got: {num_gpus}"
-            )
+
+        # Only validate GPU requirements when not using an API endpoint
+        if not api_endpoint:
+            if not num_gpus:
+                num_gpus = cuda.device_count()
+            if num_gpus <= 0 or num_gpus > cuda.device_count():
+                raise ValueError(
+                    f"invalid value for num_gpus, must be between 1 and {cuda.device_count()}; got: {num_gpus}"
+                )
+
         if output_file:
             validate_output_path(output_file)
 
-        # now we just have to run the task group in their most appropriate runtime
-        # this is important because certain tasks like MCQ are better-suited to be
-        # excuted in raw transformers due to the lack of KV-Cache overhead,
-        # whereas generative tasks are better suited for vLLM due to their need for
-        # accessing previous tokens
-
-        grouped_tasks = get_task_groupings(tasks)
+        # Group tasks by optimal runtime
+        grouped_tasks = get_task_groupings(tasks, api_endpoint)
         self._lm_eval_results = []
-        vllm_results, hf_results = None, None
-        if vllm_tasks := grouped_tasks["vllm"]:
-            args_vllm: LeaderboardArgs = {
-                "model_path": model_path,
-                "num_gpus": num_gpus,
-                "tasks": vllm_tasks,
-                "eval_config": final_eval_config,
-                "backend_config": final_vllm_config,
-            }
-            vllm_results = evaluate_with_vllm(args_vllm)
-            self._lm_eval_results.append(vllm_results)
-        if hf_tasks := grouped_tasks["huggingface"]:
-            args_hf: LeaderboardArgs = {
-                "model_path": model_path,
-                "num_gpus": num_gpus,
-                "tasks": hf_tasks,
-                "eval_config": final_eval_config,
-                "backend_config": final_hf_config,
-            }
-            hf_results = evaluate_with_hf(args_hf)
-            self._lm_eval_results.append(hf_results)
 
-        # convert the output of lm-eval into something that's already parsed
+        # Execute tasks using the appropriate backends
+        if openai_tasks := grouped_tasks["openai"]:
+            args_openai: LeaderboardArgs = {
+                "model_path": model_path,
+                "num_gpus": 1,  # Not used for API calls but required by the type
+                "tasks": openai_tasks,
+                "eval_config": final_eval_config,
+                "backend_config": final_openai_config,
+            }
+            openai_results = evaluate_with_openai(args_openai)
+            self._lm_eval_results.append(openai_results)
+        else:
+            # Only run local evaluation if not using OpenAI API
+            if vllm_tasks := grouped_tasks["vllm"]:
+                args_vllm: LeaderboardArgs = {
+                    "model_path": model_path,
+                    "num_gpus": num_gpus,
+                    "tasks": vllm_tasks,
+                    "eval_config": final_eval_config,
+                    "backend_config": final_vllm_config,
+                }
+                vllm_results = evaluate_with_vllm(args_vllm)
+                self._lm_eval_results.append(vllm_results)
+
+            if hf_tasks := grouped_tasks["huggingface"]:
+                args_hf: LeaderboardArgs = {
+                    "model_path": model_path,
+                    "num_gpus": num_gpus,
+                    "tasks": hf_tasks,
+                    "eval_config": final_eval_config,
+                    "backend_config": final_hf_config,
+                }
+                hf_results = evaluate_with_hf(args_hf)
+                self._lm_eval_results.append(hf_results)
+
+        # Convert the output of lm-eval into something that's already parsed
         results: LeaderboardV2EvalResult = get_scores_from_result_dicts(
             *self._lm_eval_results
         )
@@ -746,3 +796,47 @@ class LeaderboardV2Evaluator(Evaluator):
         if output_file:
             self.save_to_file(output_file)
         return results
+
+
+def evaluate_with_openai(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
+    # Start with default configurations
+    eval_config = deepcopy(DEFAULT_EVAL_CONFIG)
+    backend_config = deepcopy(DEFAULT_OPENAI_CONFIG)
+
+    # Override with user-provided configurations
+    if "eval_config" in args and args["eval_config"]:
+        eval_config.update(args["eval_config"])
+    if "backend_config" in args and args["backend_config"]:
+        backend_config.update(args["backend_config"])
+
+    # Extract base_url and api_key from backend_config if provided
+    base_url = backend_config.pop("base_url", None)
+    api_key = backend_config.pop("api_key", None)
+
+    # Build model_args for lm-eval's OpenAI client
+    model_args = {
+        "model": args["model_path"],  # model name as recognized by the API
+    }
+
+    # Add base_url if provided
+    if base_url:
+        model_args["base_url"] = base_url
+
+    # Add API key if provided
+    if api_key:
+        model_args["api_key"] = api_key
+
+    # Add any remaining backend config options
+    model_args.update(backend_config)
+
+    # Extract system_instruction if provided
+    system_instruction = eval_config.pop("system_instruction", None)
+
+    results = simple_evaluate(
+        tasks=args["tasks"],
+        model="openai",
+        model_args=model_args,
+        system_instruction=system_instruction,
+        **eval_config,
+    )
+    return results
