@@ -4,8 +4,10 @@
 # NOTE: This script requires the leaderboard optional dependencies.
 # Install with: pip install instructlab-eval[leaderboard]
 
-# First Party
+# Standard
 import json
+
+# First Party
 from instructlab.eval.leaderboard import LeaderboardV2Evaluator
 
 if __name__ == "__main__":

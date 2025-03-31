@@ -1,0 +1,10 @@
+lm-eval[ifeval,vllm,math,sentencepiece]>=0.4.4
+
+# vLLM 0.8.3 + torch 2.6.0 doesn't work when running vLLM on granite-3.1-8b-instruct
+vllm<=0.7.3
+torch<=2.5.1
+
+# XXX(osilkin): We use StrEnum in leaderboard, but Python3.10 doesn't have it as part of
+#               the standard library, so we have to install it from the older library.
+strenum>=0.4.15; python_version < '3.11'
+typing-extensions>=4.0.0; python_version < '3.11'

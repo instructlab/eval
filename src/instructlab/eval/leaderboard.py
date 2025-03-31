@@ -1,11 +1,10 @@
 # Standard
-from enum import StrEnum
+from copy import deepcopy
 from pathlib import Path
 import gc
 import json
 import os
 import typing as t
-from copy import deepcopy
 
 # Third Party
 from accelerate import Accelerator
@@ -18,6 +17,22 @@ import torch.multiprocessing as mp
 # Local
 from .evaluator import Evaluator
 
+# Since StrEnum wasn't part of the STL until Python3.11, we must do this
+try:
+    # Standard
+    from enum import StrEnum
+except ImportError:
+    # Third Party
+    from strenum import StrEnum  # type: ignore[no-redef]
+
+# And do the same thing to bring in NotRequired from typing
+try:
+    # Standard
+    from typing import NotRequired
+except ImportError:
+    # Third Party
+    from typing_extensions import NotRequired
+
 
 class ParsedScores(t.TypedDict):
     """
@@ -25,17 +40,17 @@ class ParsedScores(t.TypedDict):
     """
 
     score: float
-    subtasks: t.NotRequired[t.Dict[str, float]]
+    subtasks: NotRequired[t.Dict[str, float]]
 
 
 class LeaderboardV2EvalResult(t.TypedDict):
     overall_score: float
-    leaderboard_gpqa: t.NotRequired[ParsedScores]
-    leaderboard_ifeval: t.NotRequired[ParsedScores]
-    leaderboard_bbh: t.NotRequired[ParsedScores]
-    leaderboard_mmlu_pro: t.NotRequired[ParsedScores]
-    leaderboard_musr: t.NotRequired[ParsedScores]
-    leaderboard_math_hard: t.NotRequired[ParsedScores]
+    leaderboard_gpqa: NotRequired[ParsedScores]
+    leaderboard_ifeval: NotRequired[ParsedScores]
+    leaderboard_bbh: NotRequired[ParsedScores]
+    leaderboard_mmlu_pro: NotRequired[ParsedScores]
+    leaderboard_musr: NotRequired[ParsedScores]
+    leaderboard_math_hard: NotRequired[ParsedScores]
 
 
 class LeaderboardV2Tasks(StrEnum):
@@ -94,7 +109,7 @@ DEFAULT_HF_CONFIG = {
 }
 
 # 1. Add OpenAI configuration defaults
-DEFAULT_OPENAI_CONFIG = {
+DEFAULT_OPENAI_CONFIG: t.Dict[str, t.Any] = {
     "max_tokens": 768,
     "temperature": 0.0,
     "seed": 1337,
@@ -194,9 +209,6 @@ def worker(rank, world_size, args: LeaderboardArgs, result_queue: mp.Queue):
 def evaluate_with_hf(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
     # we need to use torch.multiprocessing to run each task in a separate process,
     # and then combine the results
-    # Third Party
-    import torch.multiprocessing as mp
-
     num_processes = args["num_gpus"]
 
     # Create the context and queue within the same context
@@ -222,9 +234,9 @@ def evaluate_with_hf(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
         p.join()
 
     # extract the result which is not None
-    assert len([res for res in results.values() if res is not None]) == 1, (
-        "we expect exactly 1 process to return a results dict properly"
-    )
+    assert (
+        len([res for res in results.values() if res is not None]) == 1
+    ), "we expect exactly 1 process to return a results dict properly"
     results_dict = [res for res in results.values() if res is not None][0]
     return results_dict
 
@@ -290,9 +302,9 @@ def parse_bbh(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.BBH.value, "acc_norm"
     )
-    assert len(parsed_scores["subtasks"]) == 24, (
-        "there should be 24 subtasks of bbh run"
-    )
+    assert (
+        len(parsed_scores["subtasks"]) == 24
+    ), "there should be 24 subtasks of bbh run"
     return parsed_scores
 
 
@@ -343,9 +355,9 @@ def parse_ifeval(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
             scores.append(value)
             target_metrics.remove(metric)
 
-    assert len(scores) == 2, (
-        f"there should only be 2 values extracted in ifeval, got: {len(scores)}"
-    )
+    assert (
+        len(scores) == 2
+    ), f"there should only be 2 values extracted in ifeval, got: {len(scores)}"
     return {
         "score": sum(scores) / 2,
     }
@@ -369,9 +381,9 @@ def parse_gpqa(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.GPQA.value, "acc_norm"
     )
-    assert len(parsed_scores["subtasks"]) == 3, (
-        f"Expected 3 gpqa scores, got {len(parsed_scores['subtasks'])}"
-    )
+    assert (
+        len(parsed_scores["subtasks"]) == 3
+    ), f"Expected 3 gpqa scores, got {len(parsed_scores['subtasks'])}"
     return parsed_scores
 
 
@@ -382,9 +394,9 @@ def parse_math_hard(result_dict: t.Dict[str, t.Any]) -> ParsedScores:
     parsed_scores = parse_multitask_results(
         result_dict, LeaderboardV2Tasks.MATH_HARD.value, "exact_match"
     )
-    assert len(parsed_scores["subtasks"]) == 7, (
-        f"leaderboard_math_hard should have 7 subtasks, found: {len(parsed_scores['subtasks'])}"
-    )
+    assert (
+        len(parsed_scores["subtasks"]) == 7
+    ), f"leaderboard_math_hard should have 7 subtasks, found: {len(parsed_scores['subtasks'])}"
     return parsed_scores
 
 
@@ -451,9 +463,9 @@ def get_scores_from_result_dicts(
         # this is just a sanity check step
         benchmarks_already_covered = set(parsed_scores.keys())
         overlapping_benchmarks = benchmarks_already_covered & benchmarks_to_parse
-        assert len(benchmarks_already_covered & benchmarks_to_parse) == 0, (
-            f"expected no overlapping benchmarks but found the following to overlap: {list(overlapping_benchmarks)}"
-        )
+        assert (
+            len(benchmarks_already_covered & benchmarks_to_parse) == 0
+        ), f"expected no overlapping benchmarks but found the following to overlap: {list(overlapping_benchmarks)}"
 
         # now actually add them
         for benchmark in benchmarks_to_parse:
@@ -486,12 +498,15 @@ def validate_output_path(output_file: str) -> None:
 
         # Test if we can write to the file by opening it in append mode
         # We don't actually write anything
-        output_path.open("a").close()
+        with output_path.open("a", encoding="utf-8") as _:
+            pass
 
-    except PermissionError:
-        raise ValueError(f"Permission denied: Cannot write to {output_file}")
-    except OSError as e:
-        raise ValueError(f"Invalid output path: {output_file}. Error: {str(e)}")
+    except PermissionError as pe:
+        raise ValueError(f"Permission denied: Cannot write to {output_file}") from pe
+    except OSError as ose:
+        raise ValueError(
+            f"Invalid output path: {output_file}. Error: {str(ose)}"
+        ) from ose
 
 
 def validate_leaderboard_v2_tasks(tasks: t.List[str]):
@@ -658,7 +673,7 @@ class LeaderboardV2Evaluator(Evaluator):
         output_dir = os.path.dirname(output_file)
         if output_dir:
             os.makedirs(output_dir, exist_ok=True)
-        with open(output_file, "w") as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(self._results, f, indent=2)
 
     def run(
@@ -739,15 +754,6 @@ class LeaderboardV2Evaluator(Evaluator):
         # validation logic
         validate_leaderboard_v2_tasks(tasks)
 
-        # Only validate GPU requirements when not using an API endpoint
-        if not api_endpoint:
-            if not num_gpus:
-                num_gpus = cuda.device_count()
-            if num_gpus <= 0 or num_gpus > cuda.device_count():
-                raise ValueError(
-                    f"invalid value for num_gpus, must be between 1 and {cuda.device_count()}; got: {num_gpus}"
-                )
-
         if output_file:
             validate_output_path(output_file)
 
@@ -767,6 +773,14 @@ class LeaderboardV2Evaluator(Evaluator):
             openai_results = evaluate_with_openai(args_openai)
             self._lm_eval_results.append(openai_results)
         else:
+            # Only validate GPU requirements when not using an API endpoint
+            if not num_gpus:
+                num_gpus = cuda.device_count()
+            if num_gpus <= 0 or num_gpus > cuda.device_count():
+                raise ValueError(
+                    f"invalid value for num_gpus, must be between 1 and {cuda.device_count()}; got: {num_gpus}"
+                )
+
             # Only run local evaluation if not using OpenAI API
             if vllm_tasks := grouped_tasks["vllm"]:
                 args_vllm: LeaderboardArgs = {
@@ -823,11 +837,11 @@ def evaluate_with_openai(args: LeaderboardArgs) -> t.Dict[str, t.Any]:
 
     # Add base_url if provided
     if base_url:
-        model_args["base_url"] = base_url
+        model_args.update({"base_url": base_url})
 
     # Add API key if provided
     if api_key:
-        model_args["api_key"] = api_key
+        model_args.update({"api_key": api_key})
 
     # Add any remaining backend config options
     model_args.update(backend_config)

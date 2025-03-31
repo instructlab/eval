@@ -7,11 +7,13 @@ python scripts/evaluate_best_checkpoint.py \
     --output-file /path/to/output_file
 """
 
-import json
-import typer
+# Standard
 from pathlib import Path
 from typing import Optional
+import json
 
+# Third Party
+import typer
 
 app = typer.Typer()
 
@@ -42,6 +44,7 @@ def main(
         raise typer.Exit(1)
 
     typer.echo("importing LeaderboardV2Evaluator, this may take a while...")
+    # First Party
     from instructlab.eval.leaderboard import LeaderboardV2Evaluator
 
     checkpoint_results = {}
@@ -49,15 +52,15 @@ def main(
         typer.echo(f"Processing checkpoint: {checkpoint}")
         ckpt_output_file = checkpoint / "leaderboard_results.json"
         evaluator = LeaderboardV2Evaluator(
-            model_path=str(checkpoint), output_file=ckpt_output_file
+            model_path=str(checkpoint), output_file=ckpt_output_file, num_gpus=8
         )
         result = evaluator.run()
         checkpoint_results[checkpoint.name] = result
-        typer.echo(f"Checkpoint {checkpoint.name} results: {result['score']}")
+        typer.echo(f"Checkpoint {checkpoint.name} results: {result['overall_score']}")
 
     # Sort checkpoints by score
     sorted_checkpoints = sorted(
-        checkpoint_results.items(), key=lambda x: x[1]["score"], reverse=True
+        checkpoint_results.items(), key=lambda x: x[1]["overall_score"], reverse=True
     )
     typer.echo("Sorted checkpoints by score:")
     for checkpoint_name, result in sorted_checkpoints:
