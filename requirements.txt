@@ -8,6 +8,7 @@ transformers
 accelerate
 pandas
 pandas-stubs
+# Base lm-eval dependency
 lm-eval>=0.4.4
 httpx
 ragas>=0.2.11

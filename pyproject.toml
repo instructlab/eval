@@ -42,6 +42,7 @@ issues = "https://github.com/instructlab/eval/issues"
 "mmlu_branch" = "instructlab.eval.mmlu:MMLUBranchEvaluator"
 "mt_bench" = "instructlab.eval.mt_bench:MTBenchEvaluator"
 "mt_bench_branch" = "instructlab.eval.mt_bench:MTBenchBranchEvaluator"
+"leaderboard_v2" = "instructlab.eval.leaderboard:LeaderboardV2Evaluator"
 
 [tool.setuptools_scm]
 version_file = "src/instructlab/eval/_version.py"
@@ -53,6 +54,7 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
+optional-dependencies = {leaderboard = {file = ["requirements-leaderboard.txt"]}}
 
 [tool.setuptools.packages.find]
 where = ["src"]
