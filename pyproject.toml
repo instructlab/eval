@@ -57,6 +57,7 @@ dependencies = {file = ["requirements.txt"]}
 [tool.setuptools.dynamic.optional-dependencies]
 leaderboard = {file = ["requirements-leaderboard.txt"]}
 longbench = {file = ["requirements-longbench.txt"]}
+cuda = {file = ["requirements-cuda.txt"]}
 
 [tool.setuptools.packages.find]
 where = ["src"]
