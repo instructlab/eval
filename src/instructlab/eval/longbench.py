@@ -16,18 +16,67 @@ class LongBenchResult(t.TypedDict):
     """Dict containing averages for each task type and language"""
 
     overall_score: float
-    en_multidoc: float
-    zh_multidoc: float
-    en_singledoc: float
-    zh_singledoc: float
-    en_summ: float
-    zh_summ: float
-    en_fewshot: float
-    zh_fewshot: float
-    en_synthetic: float
-    zh_synthetic: float
-    code_avg: float
+    en_multidoc: t.NotRequired[float]
+    zh_multidoc: t.NotRequired[float]
+    en_singledoc: t.NotRequired[float]
+    zh_singledoc: t.NotRequired[float]
+    en_summ: t.NotRequired[float]
+    zh_summ: t.NotRequired[float]
+    en_fewshot: t.NotRequired[float]
+    zh_fewshot: t.NotRequired[float]
+    en_synthetic: t.NotRequired[float]
+    zh_synthetic: t.NotRequired[float]
+    code_avg: t.NotRequired[float]
 
+
+# Define task categories
+TASK_CATEGORIES = {
+    "en_multidoc": ["longbench_hotpotqa", "longbench_2wikimqa", "longbench_musique"],
+    "zh_multidoc": ["longbench_dureader"],
+    "en_singledoc": [
+        "longbench_multifieldqa_en",
+        "longbench_narrativeqa",
+        "longbench_qasper",
+    ],
+    "zh_singledoc": ["longbench_multifieldqa_zh"],
+    "en_summ": ["longbench_gov_report", "longbench_qmsum", "longbench_multi_news"],
+    "zh_summ": ["longbench_vcsum"],
+    "en_fewshot": ["longbench_triviaqa", "longbench_samsum", "longbench_trec"],
+    "zh_fewshot": ["longbench_lsht"],
+    "en_synthetic": ["longbench_passage_retrieval_en", "longbench_passage_count"],
+    "zh_synthetic": ["longbench_passage_retrieval_zh"],
+    "code_avg": ["longbench_lcc", "longbench_repobench-p"],
+}
+
+# Flatten the categories to get all tasks
+ALL_LONGBENCH_TASKS = []
+for task in TASK_CATEGORIES.values():
+    ALL_LONGBENCH_TASKS.extend(task)
+
+# Task to metric mapping
+TASK_METRICS = {
+    "longbench_hotpotqa": "qa_f1_score",
+    "longbench_2wikimqa": "qa_f1_score",
+    "longbench_musique": "qa_f1_score",
+    "longbench_dureader": "rouge_zh_score",
+    "longbench_multifieldqa_en": "qa_f1_score",
+    "longbench_narrativeqa": "qa_f1_score",
+    "longbench_qasper": "qa_f1_score",
+    "longbench_multifieldqa_zh": "qa_f1_zh_score",
+    "longbench_gov_report": "rouge_score",
+    "longbench_qmsum": "rouge_score",
+    "longbench_multi_news": "rouge_score",
+    "longbench_vcsum": "rouge_zh_score",
+    "longbench_triviaqa": "qa_f1_score",
+    "longbench_samsum": "rouge_score",
+    "longbench_trec": "classification_score",
+    "longbench_lsht": "classification_score",
+    "longbench_passage_retrieval_en": "retrieval_score",
+    "longbench_passage_count": "count_score",
+    "longbench_passage_retrieval_zh": "retrieval_zh_score",
+    "longbench_lcc": "code_sim_score",
+    "longbench_repobench-p": "code_sim_score",
+}
 
 # Default configuration parameters
 DEFAULT_EVAL_CONFIG = {
@@ -47,17 +96,26 @@ DEFAULT_VLLM_CONFIG = {
     "max_model_len": 131072,
 }
 
+DEFAULT_OPENAI_CONFIG = {
+    "max_tokens": 768,
+    "temperature": 0.0,
+    "seed": 1337,
+}
+
 
 class LongBenchEvaluator(Evaluator):
     """
-    Evaluator for LongBenchV2 benchmark.
+    Evaluator for LongBench benchmark.
 
     Attributes:
-        model_path: Path to the model to evaluate
-        num_gpus: Number of GPUs to use
+        model_path: Path to the model or model name for API
+        tasks: List of subtasks to evaluate (default is all tasks)
+        num_gpus: Number of GPUs to use for local evaluation
         output_file: Path to save results to
         eval_config: Configuration for evaluation parameters
         vllm_config: Configuration for vLLM-specific parameters
+        openai_config: Configuration for OpenAI API parameters
+        api_endpoint: Optional OpenAI-compatible API endpoint
     """
 
     name = "longbench"
@@ -65,134 +123,160 @@ class LongBenchEvaluator(Evaluator):
     def __init__(
         self,
         model_path: str,
+        tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
         eval_config: t.Optional[t.Dict[str, t.Any]] = None,
         vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
+        openai_config: t.Optional[t.Dict[str, t.Any]] = None,
+        api_endpoint: t.Optional[str] = None,
     ):
         self.model_path = model_path
-        if not cuda.is_available():
-            raise ValueError("Running without CUDA is currently unsupported")
+        self.tasks = tasks or ALL_LONGBENCH_TASKS
+
+        # If using API, no need to check CUDA
+        self.api_endpoint = api_endpoint
+        if not api_endpoint and not cuda.is_available():
+            raise ValueError(
+                "Running without CUDA is currently unsupported unless using an API endpoint"
+            )
 
         self.num_gpus = num_gpus or cuda.device_count()
         self.output_file = output_file
-        self.eval_config = eval_config or {}
-        self.vllm_config = vllm_config or {}
+        self.eval_config = eval_config if eval_config else {}
+        self.vllm_config = vllm_config if vllm_config else {}
+        self.openai_config = openai_config if openai_config else {}
         self._results: t.Optional[LongBenchResult] = None
         self._lm_eval_results: t.Optional[t.Dict[str, t.Any]] = None
 
     def _get_task_averages(self, results: dict) -> LongBenchResult:
         """Calculate averages for each task type and language from raw results"""
         eval_results = defaultdict(float)
-        results = results["results"]
+        results_data = results["results"]
 
-        # Multi-doc QA
-        eval_results["en_multidoc"] = (
-            results["longbench_hotpotqa"]["qa_f1_score,none"]
-            + results["longbench_2wikimqa"]["qa_f1_score,none"]
-            + results["longbench_musique"]["qa_f1_score,none"]
-        ) / 3
+        # Track which categories have data
+        active_categories = {}
 
-        eval_results["zh_multidoc"] = results["longbench_dureader"][
-            "rouge_zh_score,none"
-        ]
+        # Process each category
+        for category, category_tasks in TASK_CATEGORIES.items():
+            # Filter tasks that were actually run
+            active_tasks = [task for task in category_tasks if task in results_data]
 
-        # Single-doc QA
-        eval_results["en_singledoc"] = (
-            results["longbench_multifieldqa_en"]["qa_f1_score,none"]
-            + results["longbench_narrativeqa"]["qa_f1_score,none"]
-            + results["longbench_qasper"]["qa_f1_score,none"]
-        ) / 3
+            if active_tasks:
+                # Get scores for active tasks
+                scores = []
+                # pylint: disable=redefined-outer-name
+                for task in active_tasks:
+                    metric_key = f"{TASK_METRICS[task]},none"
+                    if task in results_data and metric_key in results_data[task]:
+                        scores.append(results_data[task][metric_key])
 
-        eval_results["zh_singledoc"] = results["longbench_multifieldqa_zh"][
-            "qa_f1_zh_score,none"
-        ]
+                if scores:
+                    # Calculate average for this category
+                    eval_results[category] = sum(scores) / len(scores)
+                    active_categories[category] = len(scores)
 
-        # Summarization
-        eval_results["en_summ"] = (
-            results["longbench_gov_report"]["rouge_score,none"]
-            + results["longbench_qmsum"]["rouge_score,none"]
-            + results["longbench_multi_news"]["rouge_score,none"]
-        ) / 3
-
-        eval_results["zh_summ"] = results["longbench_vcsum"]["rouge_zh_score,none"]
-
-        # Few-shot
-        eval_results["en_fewshot"] = (
-            results["longbench_triviaqa"]["qa_f1_score,none"]
-            + results["longbench_samsum"]["rouge_score,none"]
-            + results["longbench_trec"]["classification_score,none"]
-        ) / 3
-
-        eval_results["zh_fewshot"] = results["longbench_lsht"][
-            "classification_score,none"
-        ]
-
-        # Synthetic
-        eval_results["en_synthetic"] = (
-            results["longbench_passage_retrieval_en"]["retrieval_score,none"]
-            + results["longbench_passage_count"]["count_score,none"]
-        ) / 2
-
-        eval_results["zh_synthetic"] = results["longbench_passage_retrieval_zh"][
-            "retrieval_zh_score,none"
-        ]
-
-        # Code (language-agnostic)
-        eval_results["code_avg"] = (
-            results["longbench_lcc"]["code_sim_score,none"]
-            + results["longbench_repobench-p"]["code_sim_score,none"]
-        ) / 2
-
-        # Calculate overall score
-        all_scores = [v for k, v in eval_results.items() if k != "overall_score"]
-        eval_results["overall_score"] = sum(all_scores) / len(all_scores)
+        # Calculate overall score from active categories
+        category_scores = [v for k, v in eval_results.items() if k != "overall_score"]
+        if category_scores:
+            eval_results["overall_score"] = sum(category_scores) / len(category_scores)
+        else:
+            eval_results["overall_score"] = 0.0
 
         return dict(eval_results)
 
     def run(
         self,
         model_path: t.Optional[str] = None,
+        tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
         eval_config: t.Optional[t.Dict[str, t.Any]] = None,
         vllm_config: t.Optional[t.Dict[str, t.Any]] = None,
+        openai_config: t.Optional[t.Dict[str, t.Any]] = None,
+        api_endpoint: t.Optional[str] = None,
     ) -> LongBenchResult:
         """Run the LongBench evaluation"""
         model_path = model_path or self.model_path
+        tasks = tasks or self.tasks
         num_gpus = num_gpus or self.num_gpus
         output_file = output_file or self.output_file
+        api_endpoint = api_endpoint or self.api_endpoint
 
         # Merge configurations
-        final_eval_config = {
-            **DEFAULT_EVAL_CONFIG,
-            **self.eval_config,
-            **(eval_config or {}),
-        }
-        final_vllm_config = {
-            **DEFAULT_VLLM_CONFIG,
-            **self.vllm_config,
-            **(vllm_config or {}),
-        }
+        final_eval_config = {}
+        final_eval_config.update(DEFAULT_EVAL_CONFIG)
+        final_eval_config.update(self.eval_config)
+        if eval_config:
+            final_eval_config.update(eval_config)
 
-        # Prepare model args
-        model_args = {
-            "pretrained": model_path,
-            "data_parallel_size": num_gpus,
-            **final_vllm_config,
-        }
+        final_vllm_config = {}
+        final_vllm_config.update(DEFAULT_VLLM_CONFIG)
+        final_vllm_config.update(self.vllm_config)
+        if vllm_config:
+            final_vllm_config.update(vllm_config)
+
+        final_openai_config = {}
+        final_openai_config.update(DEFAULT_OPENAI_CONFIG)
+        final_openai_config.update(self.openai_config)
+        if openai_config:
+            final_openai_config.update(openai_config)
 
         # Extract system_instruction if provided
         system_instruction = final_eval_config.pop("system_instruction", None)
 
-        # Run evaluation
-        results = simple_evaluate(
-            tasks=["longbench"],
-            model="vllm",
-            model_args=model_args,
-            system_instruction=system_instruction,
-            **final_eval_config,
-        )
+        # Run evaluation with the appropriate backend
+        if api_endpoint:
+            # Configure OpenAI API - handle different API endpoint formats
+            if api_endpoint.endswith("/v1/chat/completions"):
+                # If the full path is provided, use it directly
+                base_url = api_endpoint
+            elif api_endpoint.endswith("/v1"):
+                # If the path ends with /v1, append the chat/completions
+                base_url = f"{api_endpoint}/chat/completions"
+            else:
+                # Otherwise, assume we need to add the full path
+                base_url = f"{api_endpoint}/v1/chat/completions"
+
+            api_key = final_openai_config.pop("api_key", None)
+
+            # Build model args
+            model_args = {
+                "model": model_path,
+                "base_url": base_url,
+            }
+
+            # Add API key if provided
+            if api_key:
+                model_args["api_key"] = api_key
+
+            # Add remaining config options
+            model_args.update(final_openai_config)
+
+            # Run evaluation
+            results = simple_evaluate(
+                tasks=tasks,
+                model="openai-chat-completions",
+                model_args=model_args,
+                system_instruction=system_instruction,
+                **final_eval_config,
+            )
+        else:
+            # Prepare vLLM model args
+            model_args = {
+                "pretrained": model_path,
+                "data_parallel_size": num_gpus,
+                **final_vllm_config,
+            }
+
+            # Run evaluation
+            results = simple_evaluate(
+                tasks=tasks,
+                model="vllm",
+                model_args=model_args,
+                system_instruction=system_instruction,
+                **final_eval_config,
+            )
 
         self._lm_eval_results = results
         self._results = self._get_task_averages(results)
