@@ -123,6 +123,7 @@ class LongBenchEvaluator(Evaluator):
     def __init__(
         self,
         model_path: str,
+        model_name: str,
         tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
@@ -132,6 +133,7 @@ class LongBenchEvaluator(Evaluator):
         api_endpoint: t.Optional[str] = None,
     ):
         self.model_path = model_path
+        self.model_name = model_name
         self.tasks = tasks or ALL_LONGBENCH_TASKS
 
         # If using API, no need to check CUDA
@@ -188,6 +190,7 @@ class LongBenchEvaluator(Evaluator):
     def run(
         self,
         model_path: t.Optional[str] = None,
+        model_name: t.Optional[str] = None,
         tasks: t.Optional[t.List[str]] = None,
         num_gpus: t.Optional[int] = None,
         output_file: t.Optional[str] = None,
@@ -198,6 +201,7 @@ class LongBenchEvaluator(Evaluator):
     ) -> LongBenchResult:
         """Run the LongBench evaluation"""
         model_path = model_path or self.model_path
+        model_name = model_name or self.model_name
         tasks = tasks or self.tasks
         num_gpus = num_gpus or self.num_gpus
         output_file = output_file or self.output_file
@@ -227,36 +231,29 @@ class LongBenchEvaluator(Evaluator):
 
         # Run evaluation with the appropriate backend
         if api_endpoint:
-            # Configure OpenAI API - handle different API endpoint formats
-            if api_endpoint.endswith("/v1/chat/completions"):
-                # If the full path is provided, use it directly
-                base_url = api_endpoint
-            elif api_endpoint.endswith("/v1"):
-                # If the path ends with /v1, append the chat/completions
-                base_url = f"{api_endpoint}/chat/completions"
-            else:
-                # Otherwise, assume we need to add the full path
-                base_url = f"{api_endpoint}/v1/chat/completions"
-
+            base_url = api_endpoint
             api_key = final_openai_config.pop("api_key", None)
 
             # Build model args
             model_args = {
-                "model": model_path,
+                "model": model_name,
+                "tokenizer": model_path,
                 "base_url": base_url,
             }
-
-            # Add API key if provided
+            # Optionally add max_length if you want
+            if "max_length" in final_openai_config:
+                model_args["max_length"] = final_openai_config["max_length"]
+            
             if api_key:
                 model_args["api_key"] = api_key
 
-            # Add remaining config options
-            model_args.update(final_openai_config)
+            # Add any other openai_config keys if needed
+            # model_args.update(final_openai_config)  # Only if you want to pass more
 
             # Run evaluation
             results = simple_evaluate(
                 tasks=tasks,
-                model="openai-chat-completions",
+                model="local-completions",
                 model_args=model_args,
                 system_instruction=system_instruction,
                 **final_eval_config,
