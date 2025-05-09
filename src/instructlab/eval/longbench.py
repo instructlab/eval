@@ -243,7 +243,7 @@ class LongBenchEvaluator(Evaluator):
             # Optionally add max_length if you want
             if "max_length" in final_openai_config:
                 model_args["max_length"] = final_openai_config["max_length"]
-            
+
             if api_key:
                 model_args["api_key"] = api_key
 
