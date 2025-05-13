@@ -190,7 +190,7 @@ class LongBenchEvaluator(Evaluator):
         else:
             eval_results["overall_score"] = 0.0
 
-        return dict(eval_results)
+        return t.cast(LongBenchResult, dict(eval_results))
 
     def run(
         self,
@@ -268,8 +268,9 @@ class LongBenchEvaluator(Evaluator):
             model_args = {
                 "pretrained": model_path,
                 "data_parallel_size": num_gpus,
-                **final_vllm_config,
             }
+            # Add vllm config properly
+            model_args.update(final_vllm_config)
 
             # Run evaluation
             results = simple_evaluate(
