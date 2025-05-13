@@ -245,15 +245,15 @@ class LongBenchEvaluator(Evaluator):
                 "tokenizer": model_path,
                 "base_url": base_url,
             }
-            # Optionally add max_length if you want
+            # Optionally add max_length
             if "max_length" in final_openai_config:
-                model_args["max_length"] = final_openai_config["max_length"]
+                model_args["max_length"] = str(final_openai_config["max_length"])
 
             if api_key:
-                model_args["api_key"] = api_key
+                model_args["api_key"] = str(api_key)
 
             # Add any other openai_config keys if needed
-            # model_args.update(final_openai_config)  # Only if you want to pass more
+            # model_args.update(final_openai_config)
 
             # Run evaluation
             results = simple_evaluate(
@@ -267,10 +267,11 @@ class LongBenchEvaluator(Evaluator):
             # Prepare vLLM model args
             model_args = {
                 "pretrained": model_path,
-                "data_parallel_size": num_gpus,
+                "data_parallel_size": str(num_gpus),
             }
-            # Add vllm config properly
-            model_args.update(final_vllm_config)
+            # Add vllm config properly - convert all values to strings
+            string_vllm_config = {k: str(v) for k, v in final_vllm_config.items()}
+            model_args.update(string_vllm_config)
 
             # Run evaluation
             results = simple_evaluate(
