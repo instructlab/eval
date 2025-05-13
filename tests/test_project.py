@@ -5,9 +5,10 @@ from importlib.metadata import entry_points
 # First Party
 from instructlab.eval.evaluator import Evaluator
 from instructlab.eval.leaderboard import LeaderboardV2Evaluator
+from instructlab.eval.longbench import LongBenchEvaluator
 from instructlab.eval.mmlu import MMLUBranchEvaluator, MMLUEvaluator
 from instructlab.eval.mt_bench import MTBenchBranchEvaluator, MTBenchEvaluator
-from instructlab.eval.longbench import LongBenchEvaluator
+
 
 def test_evaluator_eps():
     expected = {
