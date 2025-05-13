@@ -79,28 +79,33 @@ TASK_METRICS = {
 }
 
 # Default configuration parameters
-DEFAULT_EVAL_CONFIG = {
-    "batch_size": "auto",
-    "apply_chat_template": True,
-    "fewshot_as_multiturn": True,
-    "confirm_run_unsafe_code": True,
-    "system_instruction": None,
-    "cache_requests": False,
-}
+# pylint: disable=use-dict-literal
+DEFAULT_EVAL_CONFIG = dict(
+    batch_size="auto",
+    apply_chat_template=True,
+    fewshot_as_multiturn=True,
+    confirm_run_unsafe_code=True,
+    system_instruction=None,
+    cache_requests=False,
+)
 
-DEFAULT_VLLM_CONFIG = {
-    "dtype": "float16",
-    "gpu_memory_utilization": 0.8,
-    "disable_custom_all_reduce": True,
-    "enforce_eager": False,
-    "max_model_len": 131072,
-}
+# vLLM-specific configuration - using longer context window than leaderboard
+# pylint: disable=use-dict-literal
+DEFAULT_VLLM_CONFIG = dict(
+    dtype="float16",
+    gpu_memory_utilization=0.8,
+    disable_custom_all_reduce=True,
+    enforce_eager=False,
+    max_model_len=131072,  # 128K context for LongBench
+)
 
-DEFAULT_OPENAI_CONFIG = {
-    "max_tokens": 768,
-    "temperature": 0.0,
-    "seed": 1337,
-}
+# OpenAI API configuration parameters
+# pylint: disable=use-dict-literal
+DEFAULT_OPENAI_CONFIG = dict(
+    max_tokens=768,
+    temperature=0.0,
+    seed=1337,
+)
 
 
 class LongBenchEvaluator(Evaluator):
