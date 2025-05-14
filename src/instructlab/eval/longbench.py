@@ -12,21 +12,21 @@ from torch import cuda
 from .evaluator import Evaluator
 
 
-class LongBenchResult(t.TypedDict):
+class LongBenchResult(t.TypedDict, total=False):
     """Dict containing averages for each task type and language"""
 
     overall_score: float
-    en_multidoc: t.NotRequired[float]
-    zh_multidoc: t.NotRequired[float]
-    en_singledoc: t.NotRequired[float]
-    zh_singledoc: t.NotRequired[float]
-    en_summ: t.NotRequired[float]
-    zh_summ: t.NotRequired[float]
-    en_fewshot: t.NotRequired[float]
-    zh_fewshot: t.NotRequired[float]
-    en_synthetic: t.NotRequired[float]
-    zh_synthetic: t.NotRequired[float]
-    code_avg: t.NotRequired[float]
+    en_multidoc: float
+    zh_multidoc: float
+    en_singledoc: float
+    zh_singledoc: float
+    en_summ: float
+    zh_summ: float
+    en_fewshot: float
+    zh_fewshot: float
+    en_synthetic: float
+    zh_synthetic: float
+    code_avg: float
 
 
 # Define task categories
