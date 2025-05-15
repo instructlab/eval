@@ -90,14 +90,14 @@ A teacher model is used to generate new multiple choice questions based on the k
 
 ## Development
 
-> **⚠️ Note:** Must use Python version 3.10 or later.
+> **⚠️ Note:** Must use Python version 3.11 or later.
 
 ### Set up your dev environment
 
 The following tools are required:
 
 - [`git`](https://git-scm.com)
-- [`python`](https://www.python.org) (v3.10 or v3.11)
+- [`python`](https://www.python.org) (v3.11)
 - [`pip`](https://pypi.org/project/pip/) (v23.0+)
 - [`bash`](https://www.gnu.org/software/bash/) (v5+, for functional tests)
 
