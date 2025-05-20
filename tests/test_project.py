@@ -7,6 +7,7 @@ from instructlab.eval.evaluator import Evaluator
 from instructlab.eval.leaderboard import LeaderboardV2Evaluator
 from instructlab.eval.mmlu import MMLUBranchEvaluator, MMLUEvaluator
 from instructlab.eval.mt_bench import MTBenchBranchEvaluator, MTBenchEvaluator
+from instructlab.eval.ruler import RulerEvaluator
 
 
 def test_evaluator_eps():
@@ -16,6 +17,7 @@ def test_evaluator_eps():
         "mt_bench": MTBenchEvaluator,
         "mt_bench_branch": MTBenchBranchEvaluator,
         "leaderboard_v2": LeaderboardV2Evaluator,
+        "ruler": RulerEvaluator,
     }
     eps = entry_points(group="instructlab.eval.evaluator")
     found = {}
