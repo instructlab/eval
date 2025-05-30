@@ -101,7 +101,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip_install=python -m pip install -c constraints-dev.txt"
+          pip_install="python -m pip install -c constraints-dev.txt"
           $pip_install --upgrade pip
           $pip_install tox tox-gh>=1.2
 
