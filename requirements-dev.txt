@@ -2,7 +2,20 @@
 
 -r requirements.txt
 
-pre-commit>=3.0.4,<5.0
-pylint>=2.16.2,<4.0
+pre-commit>=3.0.4
+pylint>=2.16.2
 pylint-pydantic
-tox>=4.4.2,<5
+tox>=4.4.2
+
+pytest
+pytest-asyncio
+pytest-cov
+pytest-html
+
+ruff
+isort
+pyspelling
+
+mypy>=1.10.0
+types-tqdm
+types-PyYAML
