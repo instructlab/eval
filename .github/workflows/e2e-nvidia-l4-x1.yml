@@ -19,6 +19,7 @@ on:
       - 'pyproject.toml'
       - 'requirements**.txt'
       - '.github/workflows/e2e-nvidia-l4-x1.yml' # This workflow
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
