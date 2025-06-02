@@ -1,7 +1,7 @@
 absl-py==2.3.0            # via rouge-score
 accelerate==1.7.0         # via lm-eval, peft, -r requirements.txt
 aiohappyeyeballs==2.6.1   # via aiohttp
-aiohttp==3.12.4           # via fsspec, langchain-community, vllm
+aiohttp==3.12.6           # via fsspec, langchain-community, vllm
 aiosignal==1.3.2          # via aiohttp, ray
 airportsdata==20250523    # via outlines
 annotated-types==0.7.0    # via pydantic
@@ -136,7 +136,7 @@ platformdirs==4.3.8       # via pylint, tox, virtualenv
 pluggy==1.6.0             # via pytest, tox
 portalocker==3.1.1        # via sacrebleu
 pre-commit==4.2.0         # via -r requirements-dev.txt
-prometheus-client==0.22.0  # via prometheus-fastapi-instrumentator, vllm
+prometheus-client==0.22.1  # via prometheus-fastapi-instrumentator, vllm
 prometheus-fastapi-instrumentator==7.1.0  # via vllm
 propcache==0.3.1          # via aiohttp, yarl
 protobuf==6.31.1          # via ray, vllm
@@ -213,14 +213,14 @@ typepy==1.3.4             # via dataproperty, pytablewriter, tabledata
 typer==0.16.0             # via fastapi-cli
 types-pytz==2025.2.0.20250516  # via pandas-stubs
 types-pyyaml==6.0.12.20250516  # via -r requirements-dev.txt
-types-requests==2.32.0.20250515  # via types-tqdm
+types-requests==2.32.0.20250602  # via types-tqdm
 types-tqdm==4.67.0.20250516  # via -r requirements-dev.txt
-typing-extensions==4.13.2  # via anyio, beautifulsoup4, fastapi, huggingface-hub, langchain-core, mistral-common, mypy, openai, outlines, pydantic, pydantic-core, referencing, rich-toolkit, sqlalchemy, torch, typer, typing-inspect, typing-inspection, vllm
+typing-extensions==4.14.0  # via anyio, beautifulsoup4, fastapi, huggingface-hub, langchain-core, mistral-common, mypy, openai, outlines, pydantic, pydantic-core, referencing, rich-toolkit, sqlalchemy, torch, typer, typing-inspect, typing-inspection, vllm
 typing-inspect==0.9.0     # via dataclasses-json
 typing-inspection==0.4.1  # via pydantic, pydantic-settings
 tzdata==2025.2            # via pandas
 urllib3==2.4.0            # via requests, types-requests
-uvicorn==0.34.2           # via fastapi, fastapi-cli
+uvicorn==0.34.3           # via fastapi, fastapi-cli
 uvloop==0.21.0            # via uvicorn
 virtualenv==20.31.2       # via pre-commit, tox
 vllm==0.7.3               # via lm-eval, -r requirements-leaderboard.txt
