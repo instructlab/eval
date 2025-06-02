@@ -41,6 +41,7 @@ issues = "https://github.com/instructlab/eval/issues"
 "mt_bench" = "instructlab.eval.mt_bench:MTBenchEvaluator"
 "mt_bench_branch" = "instructlab.eval.mt_bench:MTBenchBranchEvaluator"
 "leaderboard_v2" = "instructlab.eval.leaderboard:LeaderboardV2Evaluator"
+"ruler" = "instructlab.eval.ruler:RulerEvaluator"
 
 [tool.setuptools_scm]
 version_file = "src/instructlab/eval/_version.py"
