@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
-GitPython>=3.1.42,<4.0.0
+GitPython>=3.1.42
 shortuuid
-openai>=1.13.3,<2.0.0
+openai>=1.13.3
 psutil
 torch
 transformers
