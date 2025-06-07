@@ -263,3 +263,7 @@ eval_output/
             └── instructlab
                 └── granite-7b-lab.jsonl
 ```
+
+## Developer Certificate of Origin
+
+When you make a contribution to InstructLab eval, you implicitly agree to the Developer Certificate of Origin terms as set in `DCO.txt` at the root of this repository.
