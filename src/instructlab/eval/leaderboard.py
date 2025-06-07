@@ -251,8 +251,8 @@ def get_score_by_metric(score_dict: t.Dict[str, t.Any], metric: str) -> t.Any:
             extracted_value = value
             break
 
-    if not extracted_value:
-        if alias := score_dict.get("alias", None):
+    if extracted_value is None:
+        if alias := score_dict.get("alias", "[no-alias]"):
             error_msg = (
                 f"Failed to find a metric matching '{metric}' for task '{alias}'."
             )
