@@ -14,7 +14,6 @@ pytest-html
 
 ruff
 isort
-pyspelling
 
 mypy>=1.10.0
 types-tqdm
