@@ -41,6 +41,7 @@ issues = "https://github.com/instructlab/eval/issues"
 "mt_bench" = "instructlab.eval.mt_bench:MTBenchEvaluator"
 "mt_bench_branch" = "instructlab.eval.mt_bench:MTBenchBranchEvaluator"
 "leaderboard_v2" = "instructlab.eval.leaderboard:LeaderboardV2Evaluator"
+"longbench" = "instructlab.eval.longbench:LongBenchEvaluator"
 "ruler" = "instructlab.eval.ruler:RulerEvaluator"
 
 [tool.setuptools_scm]
@@ -53,7 +54,11 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}
-optional-dependencies = {leaderboard = {file = ["requirements-leaderboard.txt"]}}
+
+[tool.setuptools.dynamic.optional-dependencies]
+leaderboard = {file = ["requirements-leaderboard.txt"]}
+longbench = {file = ["requirements-longbench.txt"]}
+cuda = {file = ["requirements-cuda.txt"]}
 
 [tool.setuptools.packages.find]
 where = ["src"]
