@@ -10,7 +10,7 @@ All unit tests currently live in the `tests/` directory and are run with [pytest
 
 To run the unit tests, you can run `tox -e unit` or `tox -e unitcov` if you want to generate coverage metrics as well.
 
-In CI, the tests are run with Python 3.11 on Ubuntu and MacOS runners - you can see the details [here](https://github.com/instructlab/eval/blob/main/.github/workflows/test.yml)
+In CI, the tests are run with on Ubuntu and MacOS runners - you can see the details [here](https://github.com/instructlab/eval/blob/main/.github/workflows/test.yml)
 
 ## Functional tests
 
@@ -20,7 +20,7 @@ The functional test script is Shell-based and can be found at `scripts/functiona
 
 To run the functional tests, you can run `tox -e functional`.
 
-In CI, the tests are run with Python 3.11 on Ubuntu and MacOS runners - you can see the details [here](https://github.com/instructlab/eval/blob/main/.github/workflows/test.yml)
+In CI, the tests are run on Ubuntu and MacOS runners - you can see the details [here](https://github.com/instructlab/eval/blob/main/.github/workflows/test.yml)
 
 ## End-to-end (E2E) tests
 

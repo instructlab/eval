@@ -48,10 +48,11 @@ jobs:
       matrix:
         python:
           - "3.11"
+          - "3.12"
         platform:
           - "ubuntu-latest"
         include:
-          - python: "3.11"
+          - python: "3.12"
             platform: "macos-latest"
     steps:
       - name: Checkout

@@ -97,7 +97,7 @@ A teacher model is used to generate new multiple choice questions based on the k
 The following tools are required:
 
 - [`git`](https://git-scm.com)
-- [`python`](https://www.python.org) (v3.11)
+- [`python`](https://www.python.org) (v3.12)
 - [`pip`](https://pypi.org/project/pip/) (v23.0+)
 - [`bash`](https://www.gnu.org/software/bash/) (v5+, for functional tests)
 
