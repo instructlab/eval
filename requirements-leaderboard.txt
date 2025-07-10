@@ -1,5 +1,5 @@
 lm-eval[ifeval,vllm,math,sentencepiece]>=0.4.4
 
-# vLLM 0.8.3 + torch 2.6.0 doesn't work when running vLLM on granite-3.1-8b-instruct
-vllm<=0.7.3
-torch<=2.5.1
+# vLLM v0.9 requires newer CUDA drivers than what is run on most devices
+vllm<0.9
+torch
