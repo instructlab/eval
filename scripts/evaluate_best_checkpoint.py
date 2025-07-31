@@ -2,9 +2,18 @@
 
 """
 Example usage:
+# to evaluate directory of checkpoints
 python scripts/evaluate_best_checkpoint.py \
-    /path/to/checkpoint_dir \
+    best-checkpoint /path/to/checkpoint_dir \
     --output-file /path/to/output_file
+
+# to evaluate a single checkpoint 
+python scripts/evaluate_best_checkpoint.py evaluate \
+        --hf-model='meta-llama/Llama-3.1-8B-Instruct' 
+
+# OR for a local model
+python scripts/evaluate_best_checkpoint.py evaluate \
+        --input-dir='/path/to/checkpoint' 
 """
 
 # Standard
@@ -131,7 +140,14 @@ def best_checkpoint(
 
 @app.command()
 def evaluate(
-    input_dir: Path = typer.Argument(..., help="Input directory to process"),
+    input_dir: Annotated[
+        Optional[Path],
+        typer.Option(help="Input directory to process"),
+    ] = None,
+    hf_model: Annotated[
+        Optional[str],
+        typer.Option(help="The HF model repo to evaluate, e.g. 'meta-llama/Llama-3.1-8B-Instruct'"),
+    ] = None,
     tasks: Annotated[
         Optional[list[str]],
         typer.Option(
@@ -147,22 +163,32 @@ def evaluate(
     """
     Evaluate a single checkpoint directory and save results to JSON file.
     """
-    if not input_dir.exists():
-        typer.echo(f"Error: Input directory '{input_dir}' does not exist")
+    if not input_dir and not hf_model:
+        typer.echo("Error: one of '--input-dir' or '--hf-model' must be provided")
         raise typer.Exit(1)
 
-    if not input_dir.is_dir():
-        typer.echo(f"Error: '{input_dir}' is not a directory")
+    if input_dir and hf_model:
+        typer.echo("Error: '--input-dir' and '--hf-model' were both provided, but command only accepts one")
         raise typer.Exit(1)
 
+
+    if input_dir:
+        if not input_dir.exists():
+            typer.echo(f"Error: Input directory '{input_dir}' does not exist")
+            raise typer.Exit(1)
+
+        if not input_dir.is_dir():
+            typer.echo(f"Error: '{input_dir}' is not a directory")
+            raise typer.Exit(1)
+
+    model_path = hf_model if hf_model else str(input_dir)
     typer.echo("importing LeaderboardV2Evaluator, this may take a while...")
     # First Party
     from instructlab.eval.leaderboard import LeaderboardV2Evaluator
-
     typer.echo("done")
 
     evaluator = LeaderboardV2Evaluator(
-        model_path=str(input_dir), num_gpus=num_gpus, eval_config={"batch_size": "auto"}
+        model_path=model_path, num_gpus=num_gpus, eval_config={"batch_size": "auto"}
     )
     if tasks:
         evaluator.tasks = tasks
